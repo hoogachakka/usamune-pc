@@ -1,0 +1,129 @@
+#ifndef USAMUNE_SETTINGS_H
+#define USAMUNE_SETTINGS_H
+
+#define DEF_SETTING(name, id)						\
+  const u8 name = id; \
+  void usamune_setting_##name##_menu_bhv(uMenuSetting*) __attribute__((weak)); \
+  void usamune_setting_##name##_apply(uMenuSetting*, u8, s16) __attribute__((weak)); \
+  u32 usamune_setting_##name##_render(uMenuSetting*) __attribute__((weak)); \
+  __attribute__((weak)) uMenuSetting usamune_##name##_subsetting;
+
+DEF_SETTING(TIMER_STOP, 0x01)
+DEF_SETTING(TIMER_DISPLAY, 0x02)
+DEF_SETTING(TIMER_REALTMR, 0x1C)
+DEF_SETTING(TIMER_PSSRACE, 0x12)
+DEF_SETTING(TIMER_FADETMR, 0x22)
+DEF_SETTING(TIMER_SECTMR, 0x45)
+DEF_SETTING(TIMER_RTATMR, 0x2C)
+DEF_SETTING(TIMER_TMRPOSI, 0x11)
+
+DEF_SETTING(MISCT_MISCTMR, 0x24)
+DEF_SETTING(MISCT_NUMDISP, 0x2F)
+DEF_SETTING(MISCT_XCAM, 0x36)
+DEF_SETTING(MISCT_BSWITCH, 0x34)
+DEF_SETTING(MISCT_PSWITCH, 0x30)
+DEF_SETTING(MISCT_RIDE, 0x41)
+DEF_SETTING(MISCT_CHEST, 0x42)
+DEF_SETTING(MISCT_CRYSTAL, 0x31)
+DEF_SETTING(MISCT_ENEMY, 0x35)
+DEF_SETTING(MISCT_EXCLBOX, 0x2E)
+DEF_SETTING(MISCT_CORKBOX, 0x37)
+DEF_SETTING(MISCT_OBJGRB, 0x3A)
+DEF_SETTING(MISCT_LDGEGRB, 0x39)
+DEF_SETTING(MISCT_POLEGRB, 0x43)
+DEF_SETTING(MISCT_WK, 0x33)
+DEF_SETTING(MISCT_WALLHIT, 0x38)
+DEF_SETTING(MISCT_CLIP, 0x3B)
+DEF_SETTING(MISCT_SURFACE, 0x2D)
+DEF_SETTING(MISCT_FLIP, 0x32)
+DEF_SETTING(MISCT_ROLLOUT, 0x3D)
+DEF_SETTING(MISCT_DIVE, 0x4A)
+DEF_SETTING(MISCT_LJSLDK, 0x3E)
+DEF_SETTING(MISCT_TJ, 0x3F)
+DEF_SETTING(MISCT_LOAD, 0x47)
+DEF_SETTING(MISCT_BOWSER, 0x44)
+DEF_SETTING(MISCT_COIN, 0x3C)
+DEF_SETTING(MISCT_1UP, 0x40)
+
+DEF_SETTING(RESET_LBUTTON, 0x00)
+DEF_SETTING(RESET_LxR, 0x19)
+DEF_SETTING(RESET_INITBGM, 0x29)
+DEF_SETTING(RESET_SSTATES, 0x10)
+DEF_SETTING(RESET_RANDSTG, 0x4F)
+
+DEF_SETTING(DEFLT_DEFCOIN, 0x1D)
+DEF_SETTING(DEFLT_DEFTIME, 0x1E)
+DEF_SETTING(DEFLT_DEFRED, 0x50)
+DEF_SETTING(DEFLT_DEFRNG, 0x25)
+DEF_SETTING(DEFLT_DEFSWIM, 0x55)
+DEF_SETTING(DEFLT_DEFMISS, 0x48)
+DEF_SETTING(DEFLT_DEFCURS, 0x53)
+
+DEF_SETTING(HUD_LIFE, 0x08)
+DEF_SETTING(HUD_STAR, 0x07)
+DEF_SETTING(HUD_DUST, 0x18)
+DEF_SETTING(HUD_INPUT, 0x0B)
+DEF_SETTING(HUD_WKDISP, 0x4C)
+DEF_SETTING(HUD_ATTEMPT, 0x28)
+DEF_SETTING(HUD_ATMPFLT, 0x56)
+DEF_SETTING(HUD_MEMORY, 0x23)
+
+DEF_SETTING(DATA_CANNON, 0x1B)
+DEF_SETTING(DATA_CAP, 0x20)
+DEF_SETTING(DATA_120FILE, 0x06)
+DEF_SETTING(DATA_FOR0STAR, 0x2A)
+DEF_SETTING(DATA_FOR16STAR, 0x2B)
+DEF_SETTING(DATA_FOR70STAR, 0x13)
+DEF_SETTING(DATA_FOR120STAR, 0x0F)
+
+DEF_SETTING(STAGE_WDW, 0x0E)
+DEF_SETTING(STAGE_TTC, 0x0D)
+DEF_SETTING(STAGE_CCMPENG, 0x05)
+DEF_SETTING(STAGE_DDDSUB, 0x04)
+DEF_SETTING(STAGE_DDDMANT, 0x54)
+DEF_SETTING(STAGE_JRBMIST, 0x51)
+DEF_SETTING(STAGE_SWITCH, 0x0A)
+DEF_SETTING(STAGE_MIPS, 0x14)
+DEF_SETTING(STAGE_TOAD, 0x15)
+DEF_SETTING(STAGE_MOAT, 0x4D)
+DEF_SETTING(STAGE_STGTXT, 0x17)
+DEF_SETTING(STAGE_STARTXT, 0x26)
+
+DEF_SETTING(MISC_PRESET, 0x4E)
+DEF_SETTING(MISC_IGMENU, 0x49)
+DEF_SETTING(MISC_MUSIC, 0x03)
+DEF_SETTING(MISC_STARCOLOR, 0x27)
+DEF_SETTING(MISC_MODE, 0x21)
+DEF_SETTING(MISC_INTRO, 0x0C)
+DEF_SETTING(MISC_NONSTOP, 0x16)
+DEF_SETTING(MISC_STJ, 0x09)
+
+//macro that initializes a setting along with a list of options for that setting
+
+#define INIT_SETTING(txt, id, f, ...) \
+  (uMenuSetting){ \
+    .name = txt, \
+    .currOption = &uGlobalSettingsTable[id],	\
+    .numOptions = sizeof((const char*[]){ __VA_ARGS__ }) / sizeof(const char*), \
+    .flags = f, \
+    .menu_bhv_func = usamune_setting_##id##_menu_bhv,	\
+    .render_func = usamune_setting_##id##_render,	\
+    .apply_func = usamune_setting_##id##_apply,	\
+    .subSetting = &usamune_##id##_subsetting, \
+    .options = (const char*[]){ __VA_ARGS__ } \
+  }
+
+#define INIT_SUBSETTING(txt, stng, id, f, ...)				\
+  uMenuSetting usamune_##stng##_subsetting = (uMenuSetting){ \
+    .name = txt, \
+    .currOption = &uGlobalSettingsTable[id],	\
+    .numOptions = sizeof((const char*[]){ __VA_ARGS__ }) / sizeof(const char*), \
+    .flags = f, \
+    .menu_bhv_func = NULL,	\
+    .render_func = NULL,	\
+    .apply_func = NULL,	\
+    .subSetting = NULL, \
+    .options = (const char*[]){ __VA_ARGS__ } \
+  }
+
+#endif
