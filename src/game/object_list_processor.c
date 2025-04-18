@@ -403,7 +403,7 @@ s32 unload_deactivated_objects_in_list(struct ObjectNode *objList) {
 /**
  * OR the object's respawn info with bits << 8. If bits = 0xFF, this prevents
  * the object from respawning after leaving and re-entering the area.
- * For macro objects, respawnInfo points to the 16 bit entry in the macro object
+ * For macro oxbjects, respawnInfo points to the 16 bit entry in the macro object
  * list. For other objects, it points to the 32 bit behaviorArg in the
  * SpawnInfo.
  */

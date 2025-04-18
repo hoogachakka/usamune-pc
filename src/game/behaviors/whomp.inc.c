@@ -1,5 +1,10 @@
 // whomp.c.inc
 
+#include "game/usamune_settings.h"
+#include "sm64.h"
+
+extern void usamune_trigger_misc_timer(u8, u8);
+
 void whomp_play_sfx_from_pound_animation(void) {
     UNUSED s32 animFrame = o->header.gfx.animInfo.animFrame;
     s32 playSound = 0;
@@ -139,35 +144,36 @@ void whomp_land(void) {
 }
 
 void king_whomp_on_ground(void) {
-    Vec3f pos;
-    if (o->oSubAction == 0) {
-        if (cur_obj_is_mario_ground_pounding_platform()) {
-            o->oHealth--;
-            cur_obj_play_sound_2(SOUND_OBJ2_WHOMP_SOUND_SHORT);
-            cur_obj_play_sound_2(SOUND_OBJ_KING_WHOMP_DEATH);
-            if (o->oHealth == 0)
-                o->oAction = 8;
-            else {
-                vec3f_copy_2(pos, &o->oPosX);
-                vec3f_copy_2(&o->oPosX, &gMarioObject->oPosX);
-                spawn_mist_particles_variable(0, 0, 100.0f);
-                spawn_triangle_break_particles(20, MODEL_DIRT_ANIMATION, 3.0f, 4);
-                cur_obj_shake_screen(SHAKE_POS_SMALL);
-                vec3f_copy_2(&o->oPosX, pos);
-            }
-            o->oSubAction++;
-        }
-        o->oWhompShakeVal = 0;
-    } else {
-        if (o->oWhompShakeVal < 10) {
-            if (o->oWhompShakeVal % 2)
-                o->oPosY += 8.0f;
-            else
-                o->oPosY -= 8.0f;
-        } else
-            o->oSubAction = 10;
-        o->oWhompShakeVal++;
+  Vec3f pos;
+  if (o->oSubAction == 0) {
+    if (cur_obj_is_mario_ground_pounding_platform()) {
+      o->oHealth--;
+      cur_obj_play_sound_2(SOUND_OBJ2_WHOMP_SOUND_SHORT);
+      cur_obj_play_sound_2(SOUND_OBJ_KING_WHOMP_DEATH);
+      if (o->oHealth == 0)
+	o->oAction = 8;
+      else {
+	vec3f_copy_2(pos, &o->oPosX);
+	vec3f_copy_2(&o->oPosX, &gMarioObject->oPosX);
+	usamune_trigger_misc_timer(MISCT_ENEMY, 14);
+	spawn_mist_particles_variable(0, 0, 100.0f);
+	spawn_triangle_break_particles(20, MODEL_DIRT_ANIMATION, 3.0f, 4);
+	cur_obj_shake_screen(SHAKE_POS_SMALL);
+	vec3f_copy_2(&o->oPosX, pos);
+      }
+      o->oSubAction++;
     }
+    o->oWhompShakeVal = 0;
+  } else {
+    if (o->oWhompShakeVal < 10) {
+      if (o->oWhompShakeVal % 2)
+	o->oPosY += 8.0f;
+      else
+	o->oPosY -= 8.0f;
+    } else
+      o->oSubAction = 10;
+    o->oWhompShakeVal++;
+  }
 }
 
 void whomp_on_ground(void) {
@@ -215,27 +221,29 @@ void whomp_on_ground_general(void) {
 }
 
 void whomp_die(void) {
-    if (o->oBehParams2ndByte != 0) {
-        if (cur_obj_update_dialog_with_cutscene(MARIO_DIALOG_LOOK_UP, 
-            DIALOG_FLAG_TEXT_DEFAULT, CUTSCENE_DIALOG, DIALOG_115)) {
-            obj_set_angle(o, 0, 0, 0);
-            cur_obj_hide();
-            cur_obj_become_intangible();
-            spawn_mist_particles_variable(0, 0, 200.0f);
-            spawn_triangle_break_particles(20, MODEL_DIRT_ANIMATION, 3.0f, 4);
-            cur_obj_shake_screen(SHAKE_POS_SMALL);
-            o->oPosY += 100.0f;
-            spawn_default_star(180.0f, 3880.0f, 340.0f);
-            cur_obj_play_sound_2(SOUND_OBJ_KING_WHOMP_DEATH);
-            o->oAction = 9;
-        }
-    } else {
-        spawn_mist_particles_variable(0, 0, 100.0f);
-        spawn_triangle_break_particles(20, MODEL_DIRT_ANIMATION, 3.0f, 4);
-        cur_obj_shake_screen(SHAKE_POS_SMALL);
-        create_sound_spawner(SOUND_OBJ_THWOMP);
-        obj_mark_for_deletion(o);
+  if (o->oBehParams2ndByte != 0) {
+    if (cur_obj_update_dialog_with_cutscene(MARIO_DIALOG_LOOK_UP, 
+					    DIALOG_FLAG_TEXT_DEFAULT, CUTSCENE_DIALOG, DIALOG_115)) {
+      obj_set_angle(o, 0, 0, 0);
+      cur_obj_hide();
+      cur_obj_become_intangible();
+      usamune_trigger_misc_timer(MISCT_ENEMY, 14);
+      spawn_mist_particles_variable(0, 0, 200.0f);
+      spawn_triangle_break_particles(20, MODEL_DIRT_ANIMATION, 3.0f, 4);
+      cur_obj_shake_screen(SHAKE_POS_SMALL);
+      o->oPosY += 100.0f;
+      spawn_default_star(180.0f, 3880.0f, 340.0f);
+      cur_obj_play_sound_2(SOUND_OBJ_KING_WHOMP_DEATH);
+      o->oAction = 9;
     }
+  } else {
+    usamune_trigger_misc_timer(MISCT_ENEMY, 14);
+    spawn_mist_particles_variable(0, 0, 100.0f);
+    spawn_triangle_break_particles(20, MODEL_DIRT_ANIMATION, 3.0f, 4);
+    cur_obj_shake_screen(SHAKE_POS_SMALL);
+    create_sound_spawner(SOUND_OBJ_THWOMP);
+    obj_mark_for_deletion(o);
+  }
 }
 
 void king_whomp_stop_music(void) {

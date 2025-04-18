@@ -1,5 +1,10 @@
 // water_ring.c.inc
 
+#include "game/usamune_settings.h"
+#include "sm64.h"
+
+extern void usamune_trigger_misc_timer(u8, u8);
+
 f32 water_ring_calc_mario_dist(void) {
     f32 marioDistX = o->oPosX - gMarioObject->header.gfx.pos[0];
     f32 marioDistY = o->oPosY - (gMarioObject->header.gfx.pos[1] + 80.0f);
@@ -45,42 +50,43 @@ void bhv_jet_stream_water_ring_init(void) {
 // sp2c = ringManager
 
 void water_ring_check_collection(f32 avgScale, struct Object *ringManager) {
-    f32 marioDistInFront = water_ring_calc_mario_dist();
-    struct Object *ringSpawner;
+  f32 marioDistInFront = water_ring_calc_mario_dist();
+  struct Object *ringSpawner;
 
-    if (!is_point_close_to_object(o, gMarioObject->header.gfx.pos[0],
-                              gMarioObject->header.gfx.pos[1] + 80.0f, gMarioObject->header.gfx.pos[2],
-                              (avgScale + 0.2) * 120.0)) {
-        o->oWaterRingMarioDistInFront = marioDistInFront;
-        return;
-    }
-
-    if (o->oWaterRingMarioDistInFront * marioDistInFront < 0) {
-        ringSpawner = o->parentObj;
-        if (ringSpawner) {
-            if ((o->oWaterRingIndex == ringManager->oWaterRingMgrLastRingCollected + 1)
-                || (ringSpawner->oWaterRingSpawnerRingsCollected == 0)) {
-                ringSpawner->oWaterRingSpawnerRingsCollected++;
-                if (ringSpawner->oWaterRingSpawnerRingsCollected < 6) {
-                    spawn_orange_number(ringSpawner->oWaterRingSpawnerRingsCollected, 0, -40, 0);
-#ifdef VERSION_JP
-                    play_sound(SOUND_MENU_STAR_SOUND, gGlobalSoundSource);
-#else
-                    play_sound(SOUND_MENU_COLLECT_SECRET
-                                   + (((u8) ringSpawner->oWaterRingSpawnerRingsCollected - 1) << 16),
-                               gGlobalSoundSource);
-#endif
-                }
-
-                ringManager->oWaterRingMgrLastRingCollected = o->oWaterRingIndex;
-            } else
-                ringSpawner->oWaterRingSpawnerRingsCollected = 0;
-        }
-
-        o->oAction = WATER_RING_ACT_COLLECTED;
-    }
-
+  if (!is_point_close_to_object(o, gMarioObject->header.gfx.pos[0],
+				gMarioObject->header.gfx.pos[1] + 80.0f, gMarioObject->header.gfx.pos[2],
+				(avgScale + 0.2) * 120.0)) {
     o->oWaterRingMarioDistInFront = marioDistInFront;
+    return;
+  }
+
+  if (o->oWaterRingMarioDistInFront * marioDistInFront < 0) {
+    ringSpawner = o->parentObj;
+    if (ringSpawner) {
+      if ((o->oWaterRingIndex == ringManager->oWaterRingMgrLastRingCollected + 1)
+	  || (ringSpawner->oWaterRingSpawnerRingsCollected == 0)) {
+	ringSpawner->oWaterRingSpawnerRingsCollected++;
+	if (ringSpawner->oWaterRingSpawnerRingsCollected < 6) {
+	  usamune_trigger_misc_timer(MISCT_NUMDISP, 3);
+	  spawn_orange_number(ringSpawner->oWaterRingSpawnerRingsCollected, 0, -40, 0);
+#ifdef VERSION_JP
+	  play_sound(SOUND_MENU_STAR_SOUND, gGlobalSoundSource);
+#else
+	  play_sound(SOUND_MENU_COLLECT_SECRET
+		     + (((u8) ringSpawner->oWaterRingSpawnerRingsCollected - 1) << 16),
+		     gGlobalSoundSource);
+#endif
+	}
+
+	ringManager->oWaterRingMgrLastRingCollected = o->oWaterRingIndex;
+      } else
+	ringSpawner->oWaterRingSpawnerRingsCollected = 0;
+    }
+
+    o->oAction = WATER_RING_ACT_COLLECTED;
+  }
+
+  o->oWaterRingMarioDistInFront = marioDistInFront;
 }
 
 void water_ring_set_scale(f32 avgScale) {

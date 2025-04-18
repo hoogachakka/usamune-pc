@@ -20,6 +20,11 @@
 #include "star_select.h"
 #include "text_strings.h"
 #include "prevent_bss_reordering.h"
+#include "game/usamune.h"
+#include "game/usamune_timer.h"
+#include "game/usamune_settings.h"
+
+extern void usamune_set_default_mission(s8*, u8);
 
 /**
  * @file star_select.c
@@ -106,55 +111,62 @@ void render_100_coin_star(u8 stars) {
  * checks of what star should be next in sInitSelectedActNum.
  */
 void bhv_act_selector_init(void) {
-    s16 i = 0;
-    s32 selectorModelIDs[10];
-    u8 stars = save_file_get_star_flags(gCurrSaveFileNum - 1, gCurrCourseNum - 1);
+  s16 i = 0;
+  s32 selectorModelIDs[10];
+  u8 stars = save_file_get_star_flags(gCurrSaveFileNum - 1, gCurrCourseNum - 1);
 
-    sVisibleStars = 0;
-    while (i != sObtainedStars) {
-        if (stars & (1 << sVisibleStars)) { // Star has been collected
-            selectorModelIDs[sVisibleStars] = MODEL_STAR;
-            i++;
-        } else { // Star has not been collected
-            selectorModelIDs[sVisibleStars] = MODEL_TRANSPARENT_STAR;
-            // If this is the first star that has not been collected, set
-            // the default selection to this star.
-            if (sInitSelectedActNum == 0) {
-                sInitSelectedActNum = sVisibleStars + 1;
-                sSelectableStarIndex = sVisibleStars;
-            }
-        }
-        sVisibleStars++;
+  sVisibleStars = 0;
+  while (i != sObtainedStars) {
+    if (stars & (1 << sVisibleStars)) { // Star has been collected
+      selectorModelIDs[sVisibleStars] = MODEL_STAR;
+      i++;
+    } else { // Star has not been collected
+      selectorModelIDs[sVisibleStars] = MODEL_TRANSPARENT_STAR;
+      // If this is the first star that has not been collected, set
+      // the default selection to this star.
+      if (sInitSelectedActNum == 0) {
+	sInitSelectedActNum = sVisibleStars + 1;
+	sSelectableStarIndex = sVisibleStars;
+      }
     }
+    sVisibleStars++;
+  }
 
-    // If the stars have been collected in order so far, show the next star.
-    if (sVisibleStars == sObtainedStars && sVisibleStars != 6) {
-        selectorModelIDs[sVisibleStars] = MODEL_TRANSPARENT_STAR;
-        sInitSelectedActNum = sVisibleStars + 1;
-        sSelectableStarIndex = sVisibleStars;
-        sVisibleStars++;
-    }
+  // If the stars have been collected in order so far, show the next star.
+  if (sVisibleStars == sObtainedStars && sVisibleStars != 6) {
+    selectorModelIDs[sVisibleStars] = MODEL_TRANSPARENT_STAR;
+    sInitSelectedActNum = sVisibleStars + 1;
+    sSelectableStarIndex = sVisibleStars;
+    sVisibleStars++;
+  }
 
-    // If all stars have been collected, set the default selection to the last star.
-    if (sObtainedStars == 6) {
-        sInitSelectedActNum = sVisibleStars;
-    }
+  // If all stars have been collected, set the default selection to the last star.
+  if (sObtainedStars == 6) {
+    sInitSelectedActNum = sVisibleStars;
+  }
 
-    //! Useless, since sInitSelectedActNum has already been set in this
-    //! scenario by the code that shows the next uncollected star.
-    if (sObtainedStars == 0) {
-        sInitSelectedActNum = 1;
-    }
+  //! Useless, since sInitSelectedActNum has already been set in this
+  //! scenario by the code that shows the next uncollected star.
+  if (sObtainedStars == 0) {
+    sInitSelectedActNum = 1;
+  }
 
-    // Render star selector objects
-    for (i = 0; i < sVisibleStars; i++) {
-        sStarSelectorModels[i] =
-            spawn_object_abs_with_rot(gCurrentObject, 0, selectorModelIDs[i], bhvActSelectorStarType,
-                                      75 + sVisibleStars * -75 + i * 152, 248, -300, 0, 0, 0);
-        sStarSelectorModels[i]->oStarSelectorSize = 1.0f;
-    }
+  // Render star selector objects
+  for (i = 0; i < sVisibleStars; i++) {
+    sStarSelectorModels[i] =
+      spawn_object_abs_with_rot(gCurrentObject, 0, selectorModelIDs[i], bhvActSelectorStarType,
+				75 + sVisibleStars * -75 + i * 152, 248, -300, 0, 0, 0);
+    sStarSelectorModels[i]->oStarSelectorSize = 1.0f;
+  }
 
-    render_100_coin_star(stars);
+  render_100_coin_star(stars);
+
+  //USAMUNE: set default cursor pos according to settings
+  if (uGlobalSettingsTable[DEFLT_DEFMISS] &&
+      uStarSelectActive && (sObtainedStars == 6)) {
+    sSelectableStarIndex = uDefaultMissionSetting;
+  }
+  uStarSelectActive = FALSE;
 }
 
 /**
@@ -237,9 +249,16 @@ void print_course_number(void) {
     gSPDisplayList(gDisplayListHead++, dl_rgba16_text_begin);
     gDPSetEnvColor(gDisplayListHead++, 255, 255, 255, 255);
 
-    int_to_str(gCurrCourseNum, courseNum);
+    //USAMUNE:
+    s32 printedNum = gCurrCourseNum;
+    if (uGlobalSettingsTable[HUD_LIFE] == 4 ||
+	uGlobalSettingsTable[HUD_STAR] == 4) {
+      printedNum = (uIngameMenuTimer <= 99) ? uIngameMenuTimer : 99;
+    }
+	
+    int_to_str(printedNum, courseNum);
 
-    if (gCurrCourseNum < 10) { // 1 digit number
+    if (printedNum < 10) { // 1 digit number
         print_hud_lut_string(HUD_LUT_GLOBAL, 152, 158, courseNum);
     } else { // 2 digit number
         print_hud_lut_string(HUD_LUT_GLOBAL, 143, 158, courseNum);
@@ -436,6 +455,9 @@ s32 lvl_update_obj_and_load_act_button_actions(UNUSED s32 arg, UNUSED s32 unused
             }
             gDialogCourseActNum = sSelectedActIndex + 1;
         }
+	else {
+	  uIngameMenuTimer++;
+	}
     }
 
     area_update_objects();

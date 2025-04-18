@@ -28,6 +28,8 @@
 #include "paintings.h"
 #include "engine/graph_node.h"
 #include "level_table.h"
+#include "usamune_timer.h"
+#include "usamune_settings.h"
 
 #define CBUTTON_MASK (U_CBUTTONS | D_CBUTTONS | L_CBUTTONS | R_CBUTTONS)
 
@@ -5050,25 +5052,36 @@ void handle_c_button_movement(struct Camera *c) {
  * Zero the 10 cvars.
  */
 void clear_cutscene_vars(UNUSED struct Camera *c) {
-    s32 i;
+  s32 i;
 
-    for (i = 0; i < 10; i++) {
-        sCutsceneVars[i].unused1 = 0;
-        vec3f_set(sCutsceneVars[i].point, 0.f, 0.f, 0.f);
-        vec3f_set(sCutsceneVars[i].unusedPoint, 0.f, 0.f, 0.f);
-        vec3s_set(sCutsceneVars[i].angle, 0, 0, 0);
-        sCutsceneVars[i].unused2 = 0;
-    }
+  for (i = 0; i < 10; i++) {
+    sCutsceneVars[i].unused1 = 0;
+    vec3f_set(sCutsceneVars[i].point, 0.f, 0.f, 0.f);
+    vec3f_set(sCutsceneVars[i].unusedPoint, 0.f, 0.f, 0.f);
+    vec3s_set(sCutsceneVars[i].angle, 0, 0, 0);
+    sCutsceneVars[i].unused2 = 0;
+  }
 }
 
 /**
  * Start the cutscene, `cutscene`, if it is not already playing.
  */
+
+#define XCAM_TIME_CUTSCENE_BITFIELD 0x61120A1
 void start_cutscene(struct Camera *c, u8 cutscene) {
-    if (c->cutscene != cutscene) {
-        c->cutscene = cutscene;
-        clear_cutscene_vars(c);
+  if (c->cutscene != cutscene) {
+    c->cutscene = cutscene;
+    if (144 <= cutscene && cutscene <= 170) {
+      /**
+       * USAMUNE: if (cutscene index - 144)th bit of XCAM_TIME_CUTSCENE_BITFIELD
+       * is 1, trigger the misc timer.
+       */
+      if ((XCAM_TIME_CUTSCENE_BITFIELD >> (cutscene - 144)) & 1) {
+	usamune_trigger_misc_timer_delayed(MISCT_XCAM, 16);
+      }
     }
+    clear_cutscene_vars(c);
+  }
 }
 
 /**

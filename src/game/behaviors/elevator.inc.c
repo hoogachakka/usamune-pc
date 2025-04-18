@@ -1,5 +1,10 @@
 // elevator.c.inc
 
+#include "game/usamune_settings.h"
+#include "sm64.h"
+
+extern void usamune_trigger_misc_timer(u8, u8);
+
 static s16 sElevatorHeights[] = {   -51,    0, 0, 
                                     -461,    0, 0, 
                                     -512,    0, 0, 
@@ -35,8 +40,11 @@ void elevator_act_0(void) {
 
 void elevator_act_1(void) {
     cur_obj_play_sound_1(SOUND_ENV_ELEVATOR1);
-    if (o->oTimer == 0 && cur_obj_is_mario_on_platform())
-        elevator_starting_shake();
+    if (o->oTimer == 0) {
+      usamune_trigger_misc_timer(MISCT_RIDE, 39);
+      if (cur_obj_is_mario_on_platform())
+	elevator_starting_shake();
+    }
     approach_f32_signed(&o->oVelY, 10.0f, 2.0f);
     o->oPosY += o->oVelY;
     if (o->oPosY > o->oElevatorUnkF8) {
@@ -53,8 +61,11 @@ void elevator_act_1(void) {
 void elevator_act_2(void) // Pretty similar code to action 1
 {
     cur_obj_play_sound_1(SOUND_ENV_ELEVATOR1);
-    if (o->oTimer == 0 && cur_obj_is_mario_on_platform())
-        elevator_starting_shake();
+    if (o->oTimer == 0) {
+      usamune_trigger_misc_timer(MISCT_RIDE, 39);
+      if (cur_obj_is_mario_on_platform())
+	elevator_starting_shake();
+    }
     approach_f32_signed(&o->oVelY, -10.0f, -2.0f);
     o->oPosY += o->oVelY;
     if (o->oPosY < o->oElevatorUnkF4) {

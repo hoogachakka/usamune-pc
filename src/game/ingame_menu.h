@@ -27,6 +27,9 @@
 #define HUD_LUT_DIFF HUD_LUT_GLOBAL
 #endif
 
+#define DEFAULT_DIALOG_BOX_ANGLE 90.0f
+#define DEFAULT_DIALOG_BOX_SCALE 19.0f
+
 enum MenuMode {
     MENU_MODE_NONE = -1,
     MENU_MODE_UNUSED_0,
@@ -36,7 +39,30 @@ enum MenuMode {
 };
 
 extern s8 gDialogCourseActNum;
+extern s8 gCourseCompleteCoinsEqual;
+extern s32 gCourseDoneMenuTimer;
+extern s32 gCourseCompleteCoins;
 extern s8 gHudFlash;
+extern u16 gDialogColorFadeTimer;
+extern s8 gLastDialogLineNum;
+extern s32 gDialogVariable;
+extern u16 gDialogTextAlpha;
+extern s8 gDialogBoxState;
+extern f32 gDialogBoxOpenTimer;
+extern f32 gDialogBoxScale;
+extern s16 gDialogScrollOffsetY;
+extern s8 gDialogBoxType;
+extern s16 gDialogID;
+extern s16 gLastDialogPageStrPos;
+extern s16 gDialogTextPos;
+#ifdef VERSION_EU
+extern s32 gInGameLanguage;
+#endif
+extern s8 gDialogLineNum;
+extern s8 gLastDialogResponse;
+extern u8 gMenuHoldKeyIndex;
+extern u8 gMenuHoldKeyTimer;
+extern s32 gDialogResponse;
 
 struct DialogEntry
 {

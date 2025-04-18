@@ -205,6 +205,7 @@ SKY_TEXTURES                    := $(wildcard $(TEXTURE_DIR)/sky/*.png)
 MACHINE_TEXTURES                := $(wildcard $(TEXTURE_DIR)/machine/*.png)
 MOUNTAIN_TEXTURES               := $(wildcard $(TEXTURE_DIR)/mountain/*.png)
 GRASS_TEXTURES                  := $(wildcard $(TEXTURE_DIR)/grass/*.png)
+USAMUNE_TEXTURES                := $(wildcard $(TEXTURE_DIR)/usamune/*.png)
 
 # Texture Files
 $(BUILD_DIR)/bin/segment2.o:        $(SEGMENT2_TEXTURES:%.png=$(BUILD_DIR)/%.inc.c)
@@ -222,6 +223,7 @@ $(BUILD_DIR)/bin/sky.o:             $(SKY_TEXTURES:%.png=$(BUILD_DIR)/%.inc.c)
 $(BUILD_DIR)/bin/machine.o:         $(MACHINE_TEXTURES:%.png=$(BUILD_DIR)/%.inc.c)
 $(BUILD_DIR)/bin/mountain.o:        $(MOUNTAIN_TEXTURES:%.png=$(BUILD_DIR)/%.inc.c)
 $(BUILD_DIR)/bin/grass.o:           $(GRASS_TEXTURES:%.png=$(BUILD_DIR)/%.inc.c)
+$(BUILD_DIR)/bin/usamune.o:         $(USAMUNE_TEXTURES:%.png=$(BUILD_DIR)/%.inc.c)
 
 # Others
 $(BUILD_DIR)/bin/segment2.elf:           SEGMENT_ADDRESS := 0x02000000

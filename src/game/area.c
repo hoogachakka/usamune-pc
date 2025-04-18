@@ -23,6 +23,10 @@
 #include "level_table.h"
 #include "dialog_ids.h"
 
+#include "usamune.h"
+#include "usamune_settings.h"
+#include "usamune_timer.h"
+
 struct SpawnInfo gPlayerSpawnInfos[1];
 struct GraphNode *D_8033A160[0x100];
 struct Area gAreaData[8];
@@ -106,25 +110,28 @@ void set_warp_transition_rgb(u8 red, u8 green, u8 blue) {
 }
 
 void print_intro_text(void) {
+  if (uMenuActive) {
+    return;
+  }
 #ifdef VERSION_EU
-    s32 language = eu_get_language();
+  s32 language = eu_get_language();
 #endif
-    if ((gGlobalTimer & 0x1F) < 20) {
-        if (gControllerBits == 0) {
+  if ((gGlobalTimer & 0x1F) < 20) {
+    if (gControllerBits == 0) {
 #ifdef VERSION_EU
-            print_text_centered(SCREEN_WIDTH / 2, 20, gNoControllerMsg[language]);
+      print_text_centered(SCREEN_WIDTH / 2, 20, gNoControllerMsg[language]);
 #else
-            print_text_centered(SCREEN_WIDTH / 2, 20, "NO CONTROLLER");
+      print_text_centered(SCREEN_WIDTH / 2, 20, "NO CONTROLLER");
 #endif
-        } else {
+    } else {
 #ifdef VERSION_EU
-            print_text(20, 20, "START");
+      print_text(20, 20, "START");
 #else
-            print_text_centered(60, 38, "PRESS");
-            print_text_centered(60, 20, "START");
+      print_text_centered(60, 38, "USAMUNE");
+      print_text_centered(60, 20, "ROM");
 #endif
-        }
     }
+  }
 }
 
 u32 get_mario_spawn_type(struct Object *o) {
@@ -278,19 +285,20 @@ void unload_mario_area(void) {
 }
 
 void change_area(s32 index) {
-    s32 areaFlags = gCurrentArea->flags;
+  s32 areaFlags = gCurrentArea->flags;
 
-    if (gCurrAreaIndex != index) {
-        unload_area();
-        load_area(index);
+  if (gCurrAreaIndex != index) {
+    unload_area();
+    usamune_trigger_misc_timer(MISCT_LOAD, 45);
+    load_area(index);
 
-        gCurrentArea->flags = areaFlags;
-        gMarioObject->oActiveParticleFlags = 0;
-    }
+    gCurrentArea->flags = areaFlags;
+    gMarioObject->oActiveParticleFlags = 0;
+  }
 
-    if (areaFlags & 0x01) {
-        gMarioObject->header.gfx.areaIndex = index, gMarioSpawnInfo->areaIndex = index;
-    }
+  if (areaFlags & 0x01) {
+    gMarioObject->header.gfx.areaIndex = index, gMarioSpawnInfo->areaIndex = index;
+  }
 }
 
 void area_update_objects(void) {
@@ -373,7 +381,10 @@ void render_game(void) {
 
         gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, BORDER_HEIGHT, SCREEN_WIDTH,
                       SCREEN_HEIGHT - BORDER_HEIGHT);
-        render_hud();
+	
+	if (!uMenuActive) {
+	  render_hud();
+	}
 
         gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
         render_text_labels();
@@ -382,7 +393,7 @@ void render_game(void) {
 
         gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, BORDER_HEIGHT, SCREEN_WIDTH,
                       SCREEN_HEIGHT - BORDER_HEIGHT);
-        gMenuOptSelectIndex = render_menus_and_dialogs();
+        gMenuOptSelectIndex = usamune_render_menus_and_dialogs();
         if (gMenuOptSelectIndex != MENU_OPT_NONE) {
             gSaveOptSelectIndex = gMenuOptSelectIndex;
         }

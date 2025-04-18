@@ -168,7 +168,7 @@ endif
 
 # OPT_FLAGS - for ports
 ifeq ($(TARGET_N64),0)
-  OPT_FLAGS := -O2
+  OPT_FLAGS := -g
   ifeq ($(TARGET_WEB),1)
     OPT_FLAGS += -g4 --source-map-base http://localhost:8080/
   endif

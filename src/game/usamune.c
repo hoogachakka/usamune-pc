@@ -1,5 +1,6 @@
 #include "usamune.h"
-//#include "usamune_settings.h"
+#include "usamune_timer.h"
+#include "usamune_settings.h"
 #include "game_init.h"
 #include "ingame_menu.h"
 #include "area.h"
@@ -11,6 +12,9 @@
 #include "hud.h"
 #include "gfx_dimensions.h"
 #include "audio/external.h"
+#include "save_file.h"
+#include "moving_texture.h"
+#include "envfx_snow.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -24,13 +28,25 @@
 #define PLAY_MODE_CHANGE_LEVEL 4
 #define PLAY_MODE_FRAME_ADVANCE 5
 
+#define WARP_TYPE_NOT_WARPING 0
+#define WARP_TYPE_CHANGE_LEVEL 1
+#define WARP_TYPE_CHANGE_AREA 2
+#define WARP_TYPE_SAME_AREA 3
+
 u8 uMenuActive = 0;
 u8 uSaveStatesEnabled;
 
-s8 uSaveStateSlot;
-s8 uLoadStateSlot;
-u8 uSaveSlotText;
-u8 uSaveSlotTextTimer;
+char uMenuTextBuffer[24];
+
+s8 uSaveStateSlot = 0;
+s8 uLoadStateSlot = 0;
+u8 uSaveSlotText = SS_TEXT_NONE;
+u8 uSaveSlotTextTimer = 0;
+u8 uSaveSlotTextVisible = 0;
+static u32 uSaveSlotTextPosX = 22;
+static u32 uSaveSlotTextPosY = 185;
+s8 uWallKickDispTimer = 0;
+u8 uWallKickFrame = 0;
 u32 DAT_80417c48;
 u32 DAT_80417c4c;
 u32 DAT_80417c50;
@@ -38,24 +54,27 @@ u32 DAT_80417c54;
 u32 DAT_80417c58;
 u32 DAT_80417c5c;
 u32 DAT_80417c60;
-u32 DAT_80416920;
-u32 DAT_80416922;
-u32 DAT_80416924;
 u32 DAT_804168e0;
 u16 uMenuFadeTimer;
 u8 uMenuNextSound;
 u8 uInSubMenu;
 u8 uInEditMode;
-u32 u32_804168e0;
+static u32 uMenuShowCursor = 0;
 u8 uLockMenuArrowPos;
 u8 uLockSubMenuArrowPos;
 u8 uLockScroll;
-u32 uFlavorTextDisplayed;
-u8 uFlavorTextTimer;
+u32 uFlavorTextDisplayed = 0;
+u8 uFlavorTextTimer = 0;
+u8 uCurrLevelSelection = 0;
+u8 uCustomLevelEditArrowIndex = 0;
+u16 uLandingDustFrames = 0;
+u8 uStageTextReadArray[25];
+u32 uMoatDrainFlags = 0;
 
 u8 DAT_80417c6a = 0;
 u8 DAT_80417c6b = 0;
 u8 DAT_80417c6c = 0;
+u8 DAT_80417c44 = 0;
 
 u8 DAT_80417bd0 = 0;
 u8 DAT_80417bd2 = 0;
@@ -67,6 +86,19 @@ u8 DAT_80417bcd = 0;
 u8 DAT_80417bce = 0;
 u8 DAT_80417bcf = 0;
 
+u8 uDustFrameCounter = 0;
+
+s16 uPrevMenuMode = -1;
+s16 uPrevDialogID = -1;
+u8 uPrevWarpTransitionActive = FALSE;
+
+s8 uAttemptCounterVisible = 0;
+u8 uPrevLevelNum = 0;
+struct WarpDest uNextLevelWarpDest;
+uWarpDest *uNextWarpDest;
+
+u8 uPrevWarpMode = 0;
+s32 uTimerScreenPos = 229;
 
 
 extern uMenuSettingCategory uMenuSettingCategories[];
@@ -77,30 +109,53 @@ extern u8 sTransitionColorFadeCount[];
 extern u8 sTransitionTextureFadeCount[];
 extern void set_play_mode(s16 playMode);
 extern void shade_screen(void);
+extern s32 init_level(void);
 
 extern s16 gMenuMode;
 extern s16 gDialogID;
+extern u8 gWarpTransRed;
+extern u8 gWarpTransGreen;
+extern u8 gWarpTransBlue;
+extern u32 gWarpTransFBSetColor;
+extern struct CreditsEntry *sDispCreditsEntry;
+extern s16 sSwimStrength;
+extern s16 sPowerMeterStoredHealth;
+extern struct PowerMeterHUD sPowerMeterHUD;
+extern s32 sPowerMeterVisibleTimer;
+extern struct Object *gMarioPlatform;
+
+extern uWarpDest uWarpDestTable[];
+extern uLevelOption uLevelSelectOptions[];
+
+extern u16 gRandomSeed16;
 
 actionFunc (*uMenuActionTable)[16];
 
 static void usamune_menu_act_close_menu(u8, u16, u8*);
 static void usamune_menu_act_move_cursor(u8, u16, u8*);
+static void usamune_menu_act_level_select_move_cursor(u8, u16, u8*);
+static void usamune_menu_act_load_level(u8, u16, u8*);
 static void usamune_menu_act_modify_settings(u8, u16, u8*);
+static void usamune_menu_act_change_custom_warp(u8, u16, u8*);
+static void usamune_menu_act_switch_page(u8, u16, u8*);
 static void usamune_menu_render_options(u8, u16, u8*);
+static void usamune_menu_render_level_select(u8, u16, u8*);
 void usamune_menu_change_setting(uMenuSetting* setting, u8 param_2);
-static void FUN_80410d70(void);
-static void FUN_80409630(u32 param_1);
 static void usamune_exit_menu_or_reset(u8 reset);
 static void usamune_calc_sub_menu_first_text_index(u8* firstTextIndex);
 static void reset_action_timers(void);
+static void reset_level_vars(void);
+static void usamune_reset_environmental_levels(void);
+static void usamune_menu_switch_page(void);
+static void usamune_print_save_slot_text(void);
 
 u8 uMenuActionTimers[16];
 
 actionFunc uMenuActionsPage1[] = {
   NULL,
   usamune_menu_act_close_menu,
-  NULL,
-  NULL,
+  usamune_menu_act_switch_page,
+  usamune_menu_act_switch_page,
   NULL,
   NULL,
   usamune_menu_act_move_cursor,
@@ -115,166 +170,95 @@ actionFunc uMenuActionsPage1[] = {
   usamune_menu_render_options
 };
 
+actionFunc uMenuActionsPage2[] = {
+  usamune_menu_act_load_level,
+  usamune_menu_act_close_menu,
+  usamune_menu_act_switch_page,
+  usamune_menu_act_switch_page,
+  NULL,
+  NULL,
+  usamune_menu_act_level_select_move_cursor,
+  usamune_menu_act_level_select_move_cursor,
+  usamune_menu_act_level_select_move_cursor,
+  usamune_menu_act_level_select_move_cursor,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  usamune_menu_act_change_custom_warp,
+  usamune_menu_render_level_select
+};
+
 void usamune_main(void) {
   if (uMenuActive) {
     usamune_menu_main(gPlayer1Controller);
   }
-  /* else if (gPlayer1Controller->buttonPressed & (D_JPAD | L_JPAD | R_JPAD | L_TRIG | R_TRIG)) { */
-  /*   //cycle through save slots */
-  /*   if (uSaveStatesEnabled) { */
-  /*     if (gPlayer1Controller->buttonPressed == R_JPAD) { */
-  /* 	if (uSaveSlotText == TEXT_SAVE) { */
-  /* 	  if (gPlayer1Controller->buttonDown & Z_TRIG) { */
-  /* 	    uSaveStateSlot += 8; */
-  /* 	  } */
-  /* 	  else { */
-  /* 	    uSaveStateSlot += 1; */
-  /* 	  } */
-  /* 	  uSaveStateSlot -= 9 * (uSaveStateSlot / 9); */
-  /* 	} */
-  /* 	else { */
-  /* 	  uSaveSlotText = TEXT_SAVE; */
-  /* 	} */
-  /* 	uSaveSlotTextTimer = 30; */
-  /*     } */
-  /*     else if (gPlayer1Controller->buttonPressed == L_JPAD) { */
-  /* 	if (uSaveSlotText == TEXT_LOAD) { */
-  /* 	  if (gPlayer1Controller->buttonDown & Z_TRIG) { */
-  /* 	    uLoadStateSlot += 8; */
-  /* 	  } */
-  /* 	  else { */
-  /* 	    uLoadStateSlot += 1; */
-  /* 	  } */
-  /* 	  uLoadStateSlot -= 9 * (uLoadStateSlot / 9); */
-  /* 	} */
-  /* 	else { */
-  /* 	  uSaveSlotText = TEXT_SAVE; */
-  /* 	} */
-  /* 	uSaveSlotTextTimer = 30; */
-  /*     } */
-  /*   } */
-   
-    /* else if (gPlayer1Controller->buttonPressed < 0x101) { */
-    /*   if ((gPlayer1Controller->buttonPressed == L_TRIG) || */
-    /* 	  ((gPlayer1Controller->buttonPressed & 0xffdf) == 0x10)) { */
-    /* 	if ((gPlayer1Controller->buttonDown & 0x30) == 0x30) { */
-    /* 	  if ((DAT_80417b65 != '\x02') && (DAT_80417b65 != '\x03')) { */
-    /* 	    if (DAT_80417b65 == '\x01') { */
-    /* 	      FUN_8040a518(); */
-    /* 	      goto LAB_8040d6fc; */
-    /* 	    } */
-    /* 	    goto LAB_8040dc2c; */
-    /* 	  } */
-    /* 	} */
-    /* 	else { */
-    /* 	LAB_8040dc2c: */
-    /* 	  if (((gPlayer1Controller->buttonDown & L_TRIG) == 0) || */
-    /* 	      (((DAT_80417b4c != '\x02' && (DAT_80417b4c != '\x03')) && (DAT_80417b4c != '\x01')))) */
-    /* 	    goto LAB_8040d6fc; */
-    /* 	} */
-    /* 	FUN_8040a518(); */
-    /*   } */
-    /* } */
-    else if (gPlayer1Controller->buttonPressed & D_JPAD) {
+  else if (gPlayer1Controller->buttonPressed & (D_JPAD | L_JPAD | R_JPAD | L_TRIG | R_TRIG)) {
+    if (gPlayer1Controller->buttonPressed == L_JPAD ||
+	gPlayer1Controller->buttonPressed == R_JPAD) {
+      if (uGlobalSettingsTable[RESET_SSTATES] != 0) {
+	//cycle through save slots
+	if (gPlayer1Controller->buttonPressed == R_JPAD) {
+	  if (uSaveSlotText == SS_TEXT_SAVE) {
+	    if (gPlayer1Controller->buttonDown & Z_TRIG) {
+	      uSaveStateSlot = (uSaveStateSlot + 8) % 9;
+	    }
+	    else {
+	      uSaveStateSlot = (uSaveStateSlot + 1) % 9;
+	    }
+	  }
+	  else {
+	    uSaveSlotText = SS_TEXT_SAVE;
+	  }
+	  uSaveSlotTextTimer = 30;
+	}
+	else if (gPlayer1Controller->buttonPressed == L_JPAD) {
+	  if (uSaveSlotText == SS_TEXT_LOAD) {
+	    if (gPlayer1Controller->buttonDown & Z_TRIG) {
+	      uLoadStateSlot = (uLoadStateSlot + 8) % 9;
+	    }
+	    else {
+	      uLoadStateSlot = (uLoadStateSlot + 1) % 9;
+	    }
+	  }
+	  else {
+	    uSaveSlotText = SS_TEXT_LOAD;
+	  }
+	  uSaveSlotTextTimer = 30;
+	}
+      }
+    }
+    else if (gPlayer1Controller->buttonPressed == L_TRIG ||
+	     ((gPlayer1Controller->buttonPressed & 0xffdf) == R_TRIG)) {
+      
+      u8 resetMode = 0;
+      if ((gPlayer1Controller->buttonDown & (L_TRIG | R_TRIG)) == (L_TRIG | R_TRIG)) {
+	resetMode = uGlobalSettingsTable[RESET_LxR];
+      }
+      if ((gPlayer1Controller->buttonDown & L_TRIG) && (resetMode == 0)) {
+	resetMode = uGlobalSettingsTable[RESET_LBUTTON];
+      }
+
+      if (resetMode != 0) {
+	usamune_warp_level(resetMode);
+      } 
+    }
+    else if (gPlayer1Controller->buttonPressed == D_JPAD) {
       usamune_load_menu();
     }
-  // }
- /* LAB_8040d6fc: */
- /*  if ((DAT_80417c43 == '\0') || (DAT_80417c43 = DAT_80417c43 + -1, DAT_80417c43 != '\0')) { */
- /*    iVar5 = (DAT_80417bdc + -2) - DAT_80417be0; */
- /*  } */
- /*  else { */
- /*    iVar5 = (DAT_80417bdc + -2) - DAT_80417be0; */
- /*    DAT_80417c3c = DAT_80417be4; */
- /*    DAT_80417c38 = gGlobalTimer; */
- /*  } */
- /*  DAT_80417be4 = iVar5 + DAT_80417be4; */
- /*  DAT_80417be0 = DAT_80417bdc; */
- /*  if (DAT_80417c60._0_1_ != '\0') { */
- /*    uVar1 = (ulonglong)DAT_80417be4; */
- /*    DAT_80417c60._0_1_ = DAT_80417c60._0_1_ + -1; */
- /*    uVar6 = iVar5 + DAT_80417c54; */
- /*    if (DAT_80417b6d == '\0') { */
- /*      if (0x57a37 < uVar6) { */
- /*        DAT_80417c48._3_1_ = 0; */
- /*        DAT_80417c48._0_2_ = 0x633b; */
- /*        DAT_80417c48._2_1_ = 0x62; */
- /*        DAT_80417c54 = 0x57a37; */
- /*        goto LAB_8040d738; */
- /*      } */
- /*      FUN_8040008c((int)((ulonglong)uVar6 * 25000 >> 0x20),(int)((ulonglong)uVar6 * 25000),0,0x3a6d); */
- /*    } */
- /*    else { */
- /*      if (359999 < uVar6) { */
- /*        DAT_80417c48._3_1_ = 0; */
- /*        DAT_80417c48._0_2_ = 0x633b; */
- /*        DAT_80417c48._2_1_ = 0x62; */
- /*        DAT_80417c54 = 359999; */
- /*        goto LAB_8040d738; */
- /*      } */
- /*      uVar2 = uVar6 * 0x19 >> 0x1e | */
- /* 	((uint)(uVar6 * 0x19 < uVar6 * 0x18) + */
- /* 	 (uVar6 * 3 >> 0x1d | ((uint)(uVar6 * 3 < uVar6 * 2) - ((int)uVar6 >> 0x1f)) * 8)) * 4; */
- /*      uVar3 = uVar6 * 100; */
- /*      uVar4 = uVar3 - ((uVar3 & 0xfffffff) + (uVar2 << 4 | uVar3 >> 0x1c)) % 0xf; */
- /*      uVar1 = (ulonglong) */
- /* 	(int)(((uVar2 - (uVar3 < uVar4)) * -0x11111111 + uVar4 * -0x11111112 + */
- /* 	       (int)((ulonglong)uVar4 * 0xeeeeeeef >> 0x20)) * 0x40000000 | */
- /* 	      (uint)((ulonglong)uVar4 * 0xeeeeeeef) >> 2); */
- /*    } */
- /*    uVar2 = (int)uVar1 + (int)((uVar1 & 0xffffffff) / 6000) * -6000; */
- /*    DAT_80417c48._2_1_ = (undefined1)(uVar2 % 100); */
- /*    DAT_80417c48._0_2_ = */
- /*      (ushort)(((uint)((uVar1 & 0xffffffff) / 6000) & 0xff) << 8) | (ushort)(uVar2 / 100) & 0xff; */
- /*    DAT_80417c54 = uVar6; */
- /*  } */
-
-  //timer stuff (presumeably)
- /* LAB_8040d738: */
- /*  if (DAT_80417c42 != '\0') { */
- /*    DAT_80417c42 = DAT_80417c42 + -1; */
- /*    DAT_80417c34 = iVar5 + DAT_80417c34; */
- /*    if (DAT_80417b6d == '\0') { */
- /*      uVar6 = DAT_80417c34 * 0x3e9; */
- /*      uVar4 = (uint)(uVar6 < DAT_80417c34 * 1000) + */
- /* 	(DAT_80417c34 * 0x7d >> 0x1d | */
- /* 	 ((uint)(DAT_80417c34 * 0x7d < DAT_80417c34 * 0x7c) + */
- /* 	  (DAT_80417c34 * 0x1f >> 0x1e | */
- /* 	   ((DAT_80417c34 >> 0x1b) - (uint)(DAT_80417c34 * 0x20 < DAT_80417c34 * 0x1f)) * 4)) * 8 */
- /* 	 ); */
- /*      uVar2 = uVar6 - ((uVar6 & 0xfffff) + (uVar4 * 0x1000 & 0xfffff | uVar6 >> 0x14) + */
- /*                       (uVar4 >> 8 & 0xfffff) + (uVar4 >> 0x1c)) % 0x4b; */
- /*      uVar6 = ((uVar4 - (uVar6 < uVar2)) * -0x69d0369d + uVar2 * 0x2fc962fc + */
- /* 	       (int)((ulonglong)uVar2 * 0x962fc963 >> 0x20)) * 0x20000000 | */
- /* 	(uint)((ulonglong)uVar2 * 0x962fc963) >> 3; */
- /*    } */
- /*    else { */
- /*      uVar6 = DAT_80417c34 * 0x19 >> 0x1e | */
- /* 	((uint)(DAT_80417c34 * 0x19 < DAT_80417c34 * 0x18) + */
- /* 	 (DAT_80417c34 * 3 >> 0x1d | */
- /* 	  ((uint)(DAT_80417c34 * 3 < DAT_80417c34 * 2) - ((int)DAT_80417c34 >> 0x1f)) * 8)) * 4; */
- /*      uVar4 = DAT_80417c34 * 100; */
- /*      uVar2 = uVar4 - ((uVar4 & 0xfffffff) + (uVar6 << 4 | uVar4 >> 0x1c)) % 0xf; */
- /*      uVar6 = ((uVar6 - (uVar4 < uVar2)) * -0x11111111 + uVar2 * -0x11111112 + */
- /* 	       (int)((ulonglong)uVar2 * 0xeeeeeeef >> 0x20)) * 0x40000000 | */
- /* 	(uint)((ulonglong)uVar2 * 0xeeeeeeef) >> 2; */
- /*    } */
- /*    uVar2 = (uVar6 % 6000) / 100; */
- /*    DAT_80417c30 = (ushort)((uVar6 / 6000 & 0xff) << 8) | (ushort)uVar2; */
- /*    DAT_80417c32 = (char)(uVar6 % 6000) + (char)uVar2 * -100; */
- /*  } */
+  }
 }
 
 s16 usamune_render_menus_and_dialogs(void) {
   s16 ret = render_menus_and_dialogs();
   if (uMenuActive) {
     if (gWarpTransition.isActive && !gWarpTransDelay) {
-      gWarpTransition.isActive = 0;
+      gWarpTransition.isActive = FALSE;
       gWarpTransDelay = 0;
       sTransitionColorFadeCount[0] = 0;
       sTransitionTextureFadeCount[0] = 0;
       sTransitionTextureFadeCount[1] = 0;
-      DAT_80416924 = 0;
+      uPrevWarpTransitionActive = FALSE;
     }
     if (uMenuFadeTimer < 250) {
       uMenuFadeTimer += 25;
@@ -285,13 +269,31 @@ s16 usamune_render_menus_and_dialogs(void) {
     if ((*uMenuActionTable)[15] != NULL) {
       (*(*uMenuActionTable)[15])(0, 0, 0);
     }
-    FUN_80410d70();
+    usamune_menu_render_timer();
+  }
+  else {    
+    if (uGlobalSettingsTable[HUD_DUST] && gHudDisplay.flags) {
+      usamune_print_text_fmt_int(220, 20, "%3d", uDustFrameCounter);
+    }
+
+    uSaveSlotTextVisible = 0;
+    usamune_print_save_slot_text();
+
+    if (uGlobalSettingsTable[DEFLT_DEFRNG]) {
+      usamune_print_text_fmt_int(22, 185, "%05d", gRandomSeed16);
+    }
+    else {
+      
+
+    }
+    
+    gSPDisplayList(gDisplayListHead++, dl_usamune_text_end);  
   }
   return ret;
 }
 
 void usamune_menu_main(struct Controller *controller) {
-  u32_804168e0 = 0;
+  uMenuShowCursor = 0;
   if ((sCurrPlayMode == PLAY_MODE_NORMAL) && (gMarioObject != NULL)) {
     if (gCurrDemoInput == NULL) {
       set_play_mode(PLAY_MODE_FRAME_ADVANCE);
@@ -347,23 +349,468 @@ void usamune_menu_main(struct Controller *controller) {
       (*(*uMenuActionTable)[14])(0, 0, 0);
     }
   }
+
+  static s32 uMenuSounds[] = {
+    SOUND_MENU_MARIO_CASTLE_WARP,
+    SOUND_MENU_MARIO_CASTLE_WARP2,
+    SOUND_MENU_CLICK_CHANGE_VIEW,
+    SOUND_MENU_MESSAGE_NEXT_PAGE,
+    SOUND_MENU_CAMERA_BUZZ
+  };
+
+  s32 i = 0;
+  if (uMenuNextSound) {
+    while (!(uMenuNextSound & 1)) {
+      uMenuNextSound >>= 1;
+      i++;
+    }
+    play_sound(uMenuSounds[i], gGlobalSoundSource);
+  }
+  uMenuNextSound = 0;  
+}
+
+u8 uStarSelectActive = 0;
+
+s16 *uEnvironmentalRegions[8];
+
+void usamune_warp_level(u8 warpMode) {
+  u8 levelNum = uNextLevelWarpDest.levelNum;
+  u8 areaIdx = uNextLevelWarpDest.areaIdx;
+  u8 nodeId = uNextLevelWarpDest.nodeId;
+  u8 warpType;
+
+  if (warpMode == 4 || warpMode == 5) {
+    warpType = WARP_TYPE_CHANGE_LEVEL;
+  }
+  else {
+    if (sCurrPlayMode != PLAY_MODE_NORMAL ||
+	gCurrCreditsEntry != NULL) {
+      return;
+    }
+    if (warpMode == 1) { //LRESET
+      warpType = WARP_TYPE_CHANGE_AREA;
+      levelNum = sWarpDest.levelNum;
+      areaIdx = sWarpDest.areaIdx;
+      nodeId = sWarpDest.nodeId;
+    }
+    else {
+      warpType = (warpMode == 2) + 1;
+    }
+  }
+
+  s32 i = 0;
+  while (uWarpDestTable[i].levelNum != levelNum ||
+	 uWarpDestTable[i].areaIdx != areaIdx ||
+	 uWarpDestTable[i].nodeId != nodeId) {
+    i++;
+    if (i == 168) { //no valid warp dest was found
+      uNextWarpDest = NULL;
+      return;
+    } 
+  }
+  uNextWarpDest = &uWarpDestTable[i];
+
+  sWarpDest.type = warpType;
+  sWarpDest.levelNum = levelNum;
+  sWarpDest.areaIdx = areaIdx;
+  sWarpDest.nodeId = nodeId;
+  sWarpDest.arg = 5;
+
+  if ((warpMode - 1) < 2) { //resetting level (warping to current level)
+    for (s32 i = 0; i < 8; i++) {
+      struct SpawnInfo* spawnInfo;
+      struct Camera* c = gAreaData[i].camera;
+      s16* macroObjects = gAreaData[i].macroObjects;
+
+      /* Make sure objects are allowed to respawn */
+      for (spawnInfo = gAreaData[i].objectSpawnInfos; spawnInfo != NULL; spawnInfo = spawnInfo->next) {
+        spawnInfo->behaviorArg &= 0xFFFF00FF;
+      }
+
+      /* same for macro objects */
+      if (macroObjects) {
+	while (*macroObjects != -1) {
+	  if ((*macroObjects & 0x1FF) < 31) {
+	    break;
+	  }
+	  macroObjects[4] &= 0xFF;
+	  macroObjects += 5;
+	}
+      }
+      
+      if (c) {
+	c->cutscene = 0;
+	c->mode = c->defMode;
+      }
+    }
+
+    /* {
+    /*   uintptr_t *behaviorAddr = segmented_to_virtual(bhvChainChomp); */
+    /*   struct ObjectNode *listHead = &gObjectLists[get_object_list_from_behavior(behaviorAddr)]; */
+    /*   struct Object *obj = (struct Object *) listHead->next; */
+
+    /*   while (obj != (struct Object *) listHead) { */
+    /* 	if (obj->behavior == behaviorAddr) { */
+    /* 	  if (obj->activeFlags != ACTIVE_FLAG_DEACTIVATED) { */
+	  
+		
+    /* 	  } */
+    /* 	} */
+    /* 	obj = (struct Object *) obj->header.next; */
+    /*   } */
+    /* } */
+
+    /* { */
+    /*   uintptr_t *behaviorAddr = segmented_to_virtual(bhvWigglerHead); */
+    /*   struct ObjectNode *listHead = &gObjectLists[get_object_list_from_behavior(behaviorAddr)]; */
+    /*   if (listHead) { */
+    /* 	struct Object *obj = (struct Object *) listHead->next; */
+
+    /* 	while (obj != (struct Object *) listHead) { */
+    /* 	  if (obj->behavior == behaviorAddr) { */
+    /* 	    if (obj->activeFlags != ACTIVE_FLAG_DEACTIVATED) { */
+    /* 	      if (obj->oAction == WIGGLER_ACT_UNINITIALIZED) { */
+
+    /* 	      } */
+    /* 	      else { */
+
+    /* 	      } */
+    /* 	      break; */
+    /* 	    } */
+    /* 	  } */
+    /* 	  obj = (struct Object *) obj->header.next; */
+    /* 	} */
+    /*   } */
+    /* } */
+
+    usamune_reset_environmental_levels();
+    
+    if (levelNum == LEVEL_TOTWC) {
+      gWarpTransBlue = 0xFF;
+      gWarpTransFBSetColor = 0xFFFFFFFF;  
+    }
+    else {
+      gWarpTransBlue = (uNextWarpDest->flags & 0x12) ? (u8)-1 : 0;
+      gWarpTransFBSetColor = (uNextWarpDest->flags & 0x12) ? (u32)-1 : 0x10001;
+    }
+
+    //TODO: implement attempt counter stuff here
+    gMarioState->numCoins = uGlobalSettingsTable[DEFLT_DEFCOIN] ? uDefaultCoinCount : 0;
+    if (uGlobalSettingsTable[DEFLT_DEFRNG]) {
+      gRandomSeed16 = uDefaultRng;
+    }
+    gWarpTransRed = gWarpTransBlue;
+    gWarpTransGreen = gWarpTransBlue;
+    gHudDisplay.coins = gMarioState->numCoins;
+
+    usamune_init_level_timer(TRUE);
+    
+    uSaveStateSlot = 0;
+    uLoadStateSlot = 0;
+  }
+  else { //warping to different level
+    gSavedCourseNum = 0;
+    if (levelNum == LEVEL_TOTWC) {
+      gWarpTransFBSetColor = 0xFFFFFFFF;
+      gWarpTransRed = 0xFF;
+    }
+    else {
+      if (levelNum == LEVEL_VCUTM) {
+	gLoadedGraphNodes[55] = NULL;
+      }
+      //TODO: warp transition color stuff
+    }
+
+    s16 nextCourseNum = gLevelToCourseNumTable[uNextWarpDest->levelNum - 1];
+    gWarpTransGreen = gWarpTransRed;
+    gWarpTransBlue = gWarpTransRed;
+
+    if (warpMode == 3) {
+      gMarioState->numCoins = 0;
+      gHudDisplay.coins = 0;
+      set_play_mode(PLAY_MODE_CHANGE_LEVEL);
+      uStarSelectActive = ((nextCourseNum - 1) < 15);
+      uAttemptCounterVisible = 0;
+    }
+    else if (warpMode != 4 && warpMode != 5) {
+      uSaveStateSlot = 0;
+      uLoadStateSlot = 0;
+    }
+    else {
+      sDispCreditsEntry = NULL;
+      gCurrCreditsEntry = NULL;
+      gNeverEnteredCastle = 0;
+      gMarioState->numCoins = 0;
+      set_play_mode(PLAY_MODE_CHANGE_LEVEL);
+      uStarSelectActive = ((nextCourseNum - 1) < 15);
+      uAttemptCounterVisible = 0;
+      uSaveStateSlot = 0;
+      uLoadStateSlot = 0;
+    }
+
+
+  }
+
+  if (warpMode != 5) {
+    /* switch (gPlayer1Controller->buttonDown & C_BUTTONS) { */
+    /* case D_CBUTTONS: */
+      
+    /* } */
+
+    reset_level_vars();
+  }
+
+  //TODO: DATA_CANNON
+  //TODO: DATA_CAP
+  //TODO: DEFLT_DEFCURS
+  sSwimStrength = (uGlobalSettingsTable[DEFLT_DEFSWIM]) ? uDefaultSwimStrength : 280;
+
+  if (sWarpDest.levelNum == LEVEL_WDW) {
+    switch (uGlobalSettingsTable[STAGE_WDW]) {
+    case 1:
+      gPaintingMarioYEntry = 0.0;
+      break;
+    case 2:
+      gPaintingMarioYEntry = 1382.4;
+      break;
+    case 3:
+      gPaintingMarioYEntry = 1600.0;
+      break;
+    }
+  }
+  else if (sWarpDest.levelNum == LEVEL_TTC) {
+    switch (uGlobalSettingsTable[STAGE_TTC]) {
+    case 1:
+      gTTCSpeedSetting = TTC_SPEED_STOPPED;
+      break;
+    case 2:
+      gTTCSpeedSetting = TTC_SPEED_SLOW;
+      break;
+    case 3:
+      gTTCSpeedSetting = TTC_SPEED_RANDOM;
+      break;
+    case 4:
+      gTTCSpeedSetting = TTC_SPEED_FAST;
+      break;
+    }
+  }
+
+  //TODO: zero out all these variables of which i know nothing
+  uPrevWarpMode = warpMode;
+  uMoatDrainFlags = (uGlobalSettingsTable[STAGE_MOAT] == 2) << 9;
+  for (int i = 0; i < 25; i++) {
+    uStageTextReadArray[i] = 0;
+  }
+  uWallKickFrame = 0;
+  uWallKickDispTimer = 0;
+  uStopDoubleWarp = FALSE;
+  sPowerMeterStoredHealth = 8;
+  gHudDisplay.wedges = 8;
+  gMarioState->prevNumStarsForDialog = gMarioState->numStars;
+  gMarioState->health = 0x880;
+  sPowerMeterVisibleTimer = 0;
+  sPowerMeterHUD.y = 166;
+  sPowerMeterHUD.animation = 0;
+  gMarioPlatform = NULL;
+}
+
+static void usamune_reset_environmental_levels(void) {
+  switch (sWarpDest.levelNum) {
+  case LEVEL_CCM:
+    if (sWarpDest.areaIdx == 1) {
+      gCCMEnteredSlide = (sWarpDest.nodeId == 20);
+    }
+  case LEVEL_SL:
+    gSnowParticleCount = 5;
+    break;
+      
+  case LEVEL_CASTLE:
+    if (uEnvironmentalRegions[3] != NULL) {
+      gEnvironmentLevels[0] = -1228;
+      gEnvironmentLevels[2] = -1228;
+      uEnvironmentalRegions[3][6] = -1228;
+      uEnvironmentalRegions[3][18] = -1228;
+    }
+    break;
+      
+  case LEVEL_WDW:
+    if (uEnvironmentalRegions[1] != NULL) {
+      gEnvironmentLevels[0] = 31;
+      uEnvironmentalRegions[1][6] = 31;
+    }
+    if (uEnvironmentalRegions[2] != NULL) {
+      gEnvironmentLevels[0] = -127;
+      uEnvironmentalRegions[2][6] = -127;
+    }
+    break;
+
+  case LEVEL_JRB:
+    if (sWarpDest.areaIdx == 2) {
+      gSnowParticleCount = 30;
+    }
+    if (uEnvironmentalRegions[2] != NULL) {
+      gEnvironmentLevels[0] = 2765;
+      uEnvironmentalRegions[2][6] = 2765;
+    }
+    break;
+
+  case LEVEL_THI:
+    gTHIWaterDrained = FALSE;
+    if (uEnvironmentalRegions[1] != NULL) {
+      gEnvironmentLevels[2] = 4014;
+      uEnvironmentalRegions[1][18] = 4014;
+    }
+    if (uEnvironmentalRegions[2] != NULL) {
+      gEnvironmentLevels[2] = 1204;
+      uEnvironmentalRegions[2][18] = 4014;
+    }
+    break;
+
+  case LEVEL_CASTLE_GROUNDS:
+    if (uEnvironmentalRegions[1] != NULL) {
+      gEnvironmentLevels[0] = -81;
+      gEnvironmentLevels[1] = -81;
+      uEnvironmentalRegions[1][6] = -81;
+      uEnvironmentalRegions[1][12] = -81;
+    }
+    break;
+
+  case LEVEL_SA:
+    gSnowParticleCount = 30;
+    break;   
+  }
+  gSavedCourseNum = gLevelToCourseNumTable[sWarpDest.levelNum - 1];
+}
+
+static void reset_level_vars(void) {
+  level_set_transition(0, NULL);
+  gDialogBoxOpenTimer = DEFAULT_DIALOG_BOX_ANGLE;
+  gDialogBoxScale = DEFAULT_DIALOG_BOX_SCALE;
+  gDialogBoxState = 0;
+  gDialogScrollOffsetY = 0;
+  gDialogBoxType = 0;
+  gDialogID = DIALOG_NONE;
+  gLastDialogPageStrPos = 0;
+  gDialogTextPos = 0;
+  gDialogLineNum = 1;
+  gLastDialogResponse = 0;
+  gDialogResponse = 0;
+  gMenuMode = MENU_MODE_NONE;
+  gDialogColorFadeTimer = 0;
+  gLastDialogLineNum = 0;
+  gDialogVariable = 0;
+  gDialogTextAlpha = 0;
+  gCourseCompleteCoinsEqual = 0;
+  gCourseDoneMenuTimer = 0;
+  gCourseCompleteCoins = 0;
+  gHudFlash = 0;
+  gWarpTransition.isActive = FALSE;
+  gWarpTransDelay = 0;
+  sTransitionColorFadeCount[0] = 0;
+  sTransitionTextureFadeCount[0] = 0;
+  sTransitionTextureFadeCount[1] = 0;
+  uPrevMenuMode = -1;
+  uPrevDialogID = -1;
+  uPrevWarpTransitionActive = FALSE;
+}
+
+
+s32 usamune_init_level(void) {
+  if (gCurrDemoInput != NULL || gCurrCreditsEntry != NULL) {
+    
+  }
+  else {
+    uNextLevelWarpDest.levelNum = sWarpDest.levelNum;
+    uNextLevelWarpDest.areaIdx = sWarpDest.areaIdx;
+    if (sWarpDest.levelNum == LEVEL_THI) {
+      if (sWarpDest.areaIdx != 1) {
+	uNextLevelWarpDest.areaIdx = 2;
+      }
+      uNextLevelWarpDest.nodeId = 10;
+    }
+    else {
+      uNextLevelWarpDest.nodeId = sWarpDest.nodeId;
+      if (sWarpDest.levelNum != LEVEL_CASTLE &&
+	  sWarpDest.levelNum != LEVEL_CASTLE_GROUNDS &&
+	  sWarpDest.levelNum != LEVEL_ENDING) {
+	uNextLevelWarpDest.nodeId = 10;
+	uNextLevelWarpDest.areaIdx = 1;
+      }
+    }
+
+    if (gCurrCourseNum == COURSE_NONE) { //in hub
+      
+      //TODO: timer related stuff occurs here
+      
+      //in case text was supposed to show up when entering castle for the first time, skip it
+      if (uGlobalSettingsTable[STAGE_STGTXT] == 3) {
+	gNeverEnteredCastle = FALSE;
+      }
+    }  
+  }
+
+  usamune_init_level_timer(0);
   
-  if (uMenuNextSound & 1) {
-    play_sound(SOUND_MENU_MARIO_CASTLE_WARP, gGlobalSoundSource);
+  for (s32 i = 0; i < 8; i++) {
+    uEnvironmentalRegions[i] = NULL;
   }
-  else if (uMenuNextSound & 2) {
-    play_sound(SOUND_MENU_MARIO_CASTLE_WARP2, gGlobalSoundSource);
+  return init_level();
+}
+
+static void usamune_menu_act_load_level(u8 state, UNUSED u16 input, UNUSED u8* timer) {
+  if (state != MENU_ACTION_PREPARE) {
+    return;
   }
-  else if (uMenuNextSound & 4) {
-    play_sound(SOUND_MENU_CLICK_CHANGE_VIEW, gGlobalSoundSource);
+
+  if (sCurrPlayMode == PLAY_MODE_FRAME_ADVANCE) {
+    uWarpDest nextLevel = uWarpDestTable[uLevelSelectOptions[uCurrLevelSelection].warpID];
+    uNextLevelWarpDest.levelNum = nextLevel.levelNum;
+    uNextLevelWarpDest.areaIdx = nextLevel.areaIdx;
+    uNextLevelWarpDest.nodeId = nextLevel.nodeId;
+    usamune_exit_menu_or_reset(1);
+    usamune_warp_level(4);
   }
-  else if (uMenuNextSound & 8) {
-    play_sound(SOUND_MENU_MESSAGE_NEXT_PAGE, gGlobalSoundSource);
+
+  //TODO: flavor text stuff
+}
+
+static void usamune_menu_act_change_custom_warp(UNUSED u8 p1, UNUSED u16 p2, UNUSED u8* p3) {
+  if (uCurrLevelSelection != 30) {
+    return;
   }
-  else if (uMenuNextSound & 0x10) {
-    play_sound(SOUND_MENU_CAMERA_BUZZ, gGlobalSoundSource);
+
+  u8 nextId = uLevelSelectOptions[30].warpID;
+  s8 nextArrowIndex = uCustomLevelEditArrowIndex;
+  u16 input = gPlayer1Controller->buttonPressed & C_BUTTONS;
+  switch (input) {
+  case L_CBUTTONS: 
+    nextArrowIndex += 1;
+    if (nextArrowIndex > 2) {
+      nextArrowIndex = 0;
+    }
+    break;
+  case R_CBUTTONS:
+    nextArrowIndex -= 1;
+    if (nextArrowIndex < 0) {
+      nextArrowIndex = 2;
+    }
+    break;
+  case U_CBUTTONS: 
+    nextId = find_next_valid_warp(nextId, uCustomLevelEditArrowIndex, 1);
+    break;
+  case D_CBUTTONS:
+    nextId = find_next_valid_warp(nextId, uCustomLevelEditArrowIndex, -1);
+    break;
   }
-  uMenuNextSound = 0;
+
+  if (uLevelSelectOptions[30].warpID != nextId) {
+    uLevelSelectOptions[30].warpID = nextId;
+    uMenuNextSound |= (1 << 3);
+  }
+  else if (uCustomLevelEditArrowIndex != nextArrowIndex) {
+    uCustomLevelEditArrowIndex = nextArrowIndex;
+    uMenuNextSound |= (1 << 3);
+  }
 }
 
 void usamune_load_menu(void) {
@@ -387,6 +834,8 @@ void usamune_load_menu(void) {
   }
   uMenuActive = TRUE;
   uMenuFadeTimer = 0;
+
+  
   
  /*  iVar10 = DAT_804168e8 + 1; */
  /*  DAT_804168ec = 0; */
@@ -584,9 +1033,9 @@ void usamune_load_menu(void) {
   DAT_80417c58 = 0;
   DAT_80417c5c = 0;
   DAT_80417c60 = 0;
-  DAT_80416920 = gMenuMode;
-  DAT_80416922 = gDialogID;
-  DAT_80416924 = gWarpTransition.isActive;
+  uPrevMenuMode = gMenuMode;
+  uPrevDialogID = gDialogID;
+  uPrevWarpTransitionActive = gWarpTransition.isActive;
   gMenuMode = MENU_MODE_NONE;
   gDialogID = DIALOG_NONE;
   gWarpTransition.isActive = FALSE;
@@ -598,11 +1047,11 @@ void usamune_load_menu(void) {
   }
 }
 
-/* void usamune_print_save_slot_text(void) { */
-/*   if (uSaveSlotTextTimer == 0) { */
-/*     return; */
-/*   } */
-/* } */
+static void usamune_menu_act_switch_page(u8 state, UNUSED u16 input, UNUSED u8* timer) {
+  if (state == MENU_ACTION_PREPARE) {
+    usamune_menu_switch_page();
+  }
+}
 
 static void usamune_menu_act_close_menu(u8 state, UNUSED u16 input, UNUSED u8* timer) {
   if (state == MENU_ACTION_PREPARE) {
@@ -654,12 +1103,61 @@ static void usamune_menu_act_move_cursor(u8 state, u16 input, u8* timer) {
       else {
 	uMenuCurrCategory->currSetting = nextOption;
       }
-      u32_804168e0 = 1;
-    } 
+      uMenuShowCursor = 1;
+    }
+    uInEditMode = FALSE;
     uMenuNextSound |= (1 << 3);
     uMenuActionTimers[5] = 0; //Z_TRIG
   }
   
+  *timer = (state == MENU_ACTION_PREPARE) ? 10 : 3;
+  if (!(input & R_JPAD)) uMenuActionTimers[9] = 0;
+  if (!(input & L_JPAD)) uMenuActionTimers[8] = 0;
+  if (!(input & D_JPAD)) uMenuActionTimers[7] = 0;
+  if (!(input & U_JPAD)) uMenuActionTimers[6] = 0;
+}
+
+static void usamune_menu_act_level_select_move_cursor(u8 state, u16 input, u8* timer) {
+  if (uLockScroll) return;
+
+  u8 parity = uCurrLevelSelection & 1;
+  s8 nextSelection = uCurrLevelSelection;
+
+  switch(input) {
+  case D_JPAD:
+    nextSelection += 2;
+    if (nextSelection > 30) {
+      nextSelection = parity;
+    }
+    uMenuShowCursor = 1;
+    break;
+  case U_JPAD:
+    nextSelection -= 2;
+    if (nextSelection < 0) {
+      nextSelection = 30 - parity;
+    }
+    uMenuShowCursor = 1;
+    break;
+  case L_JPAD:
+    nextSelection -= 1;
+    if (nextSelection < 0) {
+      nextSelection = 30;
+    }
+    break;
+  case R_JPAD:
+    nextSelection += 1;
+    if (nextSelection > 30) {
+      nextSelection = 0;
+    }
+    break;
+  }
+
+  if (nextSelection != uCurrLevelSelection) {
+    uCurrLevelSelection = nextSelection;
+    uMenuNextSound |= (1 << 3);
+    uMenuActionTimers[5] = 0;
+  }
+
   *timer = (state == MENU_ACTION_PREPARE) ? 10 : 3;
   if (!(input & R_JPAD)) uMenuActionTimers[9] = 0;
   if (!(input & L_JPAD)) uMenuActionTimers[8] = 0;
@@ -719,12 +1217,24 @@ static void reset_action_timers(void) {
   
   
 
-/* static void usamune_menu_act_switch_page(u8 state, u16 input, u8* timer) { */
-/*   if (state == MENU_ACTION_PREPARE) { */
+static void usamune_menu_switch_page(void) {
+  uInEditMode = FALSE;
+  /* if (uGlobalSettingsTable[MISC_PRESET] == 0) { */
     
 
-/*   } */
-/* } */
+  /* } */
+
+  
+  uMenuNextSound |= 4;
+  reset_action_timers();
+  
+  if (uMenuActionTable == &uMenuActionsPage1) {
+    uMenuActionTable = &uMenuActionsPage2;
+  }
+  else {
+    uMenuActionTable = &uMenuActionsPage1;
+  }
+}
 
 /* static void usamune_menu_act_soft_reset(u8 state, u16 input, u8* timer) { */
 /*   if (state == MENU_ACTION_PREPARE) { */
@@ -755,8 +1265,8 @@ static void usamune_menu_render_options(UNUSED u8 p1, UNUSED u16 p2, UNUSED u8* 
   }
   else if (arrowIndex < 6) {
     firstTextIndex = arrowIndex - 2;
-    if ((u32_804168e0 == 1) && !uInSubMenu && uLockMenuArrowPos) {
-      u32_804168e0 = 2;
+    if ((uMenuShowCursor == 1) && !uInSubMenu && uLockMenuArrowPos) {
+      uMenuShowCursor = 2;
     }
     uLockMenuArrowPos = TRUE;
   }
@@ -788,7 +1298,7 @@ static void usamune_menu_render_options(UNUSED u8 p1, UNUSED u16 p2, UNUSED u8* 
       const char* str = uMenuSettingCategories[textIndex].name;
       gDPSetEnvColor(gDisplayListHead++, 255, 255, 255, uMenuFadeTimer);
       usamune_print_text(33, yPos, str);
-      if (textIndex == arrowIndex && u32_804168e0 != 2) {
+      if (textIndex == arrowIndex && uMenuShowCursor != 2) {
 	usamune_print_text(18, yPos, ">");
       }
       yPos -= 29;
@@ -813,7 +1323,7 @@ static void usamune_menu_render_options(UNUSED u8 p1, UNUSED u16 p2, UNUSED u8* 
     gDPSetEnvColor(gDisplayListHead++, 255, 255, 255, uMenuFadeTimer);
     usamune_print_text(xPos, yPos, str);
     usamune_print_text(124, yPos, currSetting.name);
-    if (uInSubMenu && textIndex == arrowIndex && u32_804168e0 != 2) {
+    if (uInSubMenu && textIndex == arrowIndex && uMenuShowCursor != 2) {
       usamune_print_text(109, yPos, ">");
     }
     yPos -= 22;
@@ -833,6 +1343,68 @@ static void usamune_menu_render_options(UNUSED u8 p1, UNUSED u16 p2, UNUSED u8* 
 }
 
 
+
+static void usamune_menu_render_level_select(UNUSED u8 p1, UNUSED u16 p2, UNUSED u8* p3) {
+  static u8 lockScroll = 0;
+  u8 textStartIndex = 0;
+  
+  shade_screen();
+  gSPDisplayList(gDisplayListHead++, dl_usamune_text_begin);  
+  gDPSetEnvColor(gDisplayListHead++, 255, 255, 255, uMenuFadeTimer);
+
+  usamune_print_text(22, 200, "- Cur");
+  usamune_print_text_fmt_int(90, 200, "%02x", sWarpDest.levelNum);
+  usamune_print_text_fmt_int(120, 200, "%02x", sWarpDest.areaIdx);
+  usamune_print_text_fmt_int(150, 200, "%02x", sWarpDest.nodeId);
+  usamune_print_text(186, 200, "-");
+
+  if (uCurrLevelSelection < 4) {
+    textStartIndex = 0;
+    lockScroll = FALSE;
+  }
+  else if (uCurrLevelSelection > 25) {
+    textStartIndex = 20;
+    lockScroll = FALSE;
+  }
+  else {
+    if (uMenuShowCursor == 1 && lockScroll) {
+      uMenuShowCursor = 2;
+    }
+    textStartIndex = (uCurrLevelSelection & 0xFE) - 4;
+    lockScroll = TRUE;
+  }
+
+  u8 textEndIndex = textStartIndex + 11;
+  if (textEndIndex > 30) textEndIndex = 30;
+
+  s32 y = 168;
+  u8 textIndex = textStartIndex;
+  while (textIndex <= textEndIndex) {
+    s32 x = 136 * (textIndex & 1);
+    usamune_print_text(x + 60, y, uLevelSelectOptions[textIndex].name);
+    if (uCurrLevelSelection == textIndex) {
+      if (uMenuShowCursor != 2) {
+	usamune_print_text(x + 45, y, ">");
+      }
+      if (uCurrLevelSelection == 30) {
+	uWarpDest customDest = uWarpDestTable[uLevelSelectOptions[30].warpID];
+	usamune_print_text_fmt_int(180, y, "%02x", customDest.levelNum);
+	usamune_print_text_fmt_int(210, y, "%02x", customDest.areaIdx);
+	usamune_print_text_fmt_int(240, y, "%02x", customDest.nodeId);
+	u8 cursorPos = 246 - (30 * uCustomLevelEditArrowIndex);
+	usamune_print_text(cursorPos, y - 13, "^");
+      }
+    }
+    if (!(++textIndex & 1)) {
+      y -= 23;
+    }
+  }
+
+  //TODO: flavor text stuff
+
+  gSPDisplayList(gDisplayListHead++, dl_usamune_text_end);
+}
+
 static void usamune_calc_sub_menu_first_text_index(u8* firstTextIndex) {  
   u8 numSettings = uMenuCurrCategory->numSettings;
   u8 currSetting = uMenuCurrCategory->currSetting;
@@ -846,8 +1418,8 @@ static void usamune_calc_sub_menu_first_text_index(u8* firstTextIndex) {
     uLockSubMenuArrowPos = FALSE;
   }
   else { //scrolling
-    if ((u32_804168e0 == 1) && uInSubMenu && uLockSubMenuArrowPos) {
-      u32_804168e0 = 2;
+    if ((uMenuShowCursor == 1) && uInSubMenu && uLockSubMenuArrowPos) {
+      uMenuShowCursor = 2;
     }
     *firstTextIndex = currSetting - 2;
     uLockSubMenuArrowPos = TRUE;
@@ -856,11 +1428,10 @@ static void usamune_calc_sub_menu_first_text_index(u8* firstTextIndex) {
 
 void usamune_print_text(s32 x, s32 y, const char* str) {
   if (str && (*str != 0)) {
-    int i = 0;
-      
+    int i = 0;      
     while (TRUE) {
       x &= 0x3ff;
-      void* tex = usamune_sprite_lut[(u8)str[i] - 32];
+      const void* tex = usamune_sprite_lut[(u8)str[i] - 32];
       if (tex) {
 	gDPLoadTextureBlock(gDisplayListHead++, tex, G_IM_FMT_RGBA, G_IM_SIZ_16b, 16, 16, 0,
 			    G_TX_WRAP | G_TX_NOMIRROR, G_TX_WRAP | G_TX_NOMIRROR, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
@@ -876,40 +1447,71 @@ void usamune_print_text(s32 x, s32 y, const char* str) {
 }
 
 void usamune_print_text_fmt_int(s32 x, s32 y, const char* str, s32 n) {
-  char buf[20];
+  char buf[24];
   sprintf(buf, str, n);
   usamune_print_text(x, y, buf);
 }
 
-void usamune_render_hud(void) {
-  if (!uMenuActive) {
-    render_hud();
-  }
-}
+void usamune_render_timer(s32 x, s32 y, u16 time) {
+  u16 timerMins;
+  u16 timerSecs;
+  u16 timerFracSecs;
 
-static void FUN_80410d70(void) {
-  if (!gHudDisplay.flags) {
-    return;
-  }
-  
+  timerMins = time / (30 * 60);
+  timerSecs = (time - (timerMins * 1800)) / 30;
+  timerFracSecs = (10 * ((time - (timerMins * 1800) - (timerSecs * 30)) & 0xFFFF)) / 3;
+
+  usamune_print_text_fmt_int(x, y, "%0d", timerMins);
+  usamune_print_text_fmt_int(x + 20, y, "%02d", timerSecs);
+  usamune_print_text_fmt_int(x + 54, y, "%02d", timerFracSecs);
+  usamune_print_text(x + 10, y + 7, "'");
+  usamune_print_text(x + 45, y + 7, "\"");
 }
 
 static void usamune_exit_menu_or_reset(u8 reset) {
   uMenuActive = FALSE;
+  uInEditMode = FALSE;
 
-  for (int i = 0; i < 16; i++) {
-    uMenuActionTimers[i] = 0;
-  }
-
+  reset_action_timers();
   if (reset == 0) {
-    gMenuMode = DAT_80416920;
-    gDialogID = DAT_80416922;
+    gMenuMode = uPrevMenuMode;
+    gDialogID = uPrevDialogID;
     if (sCurrPlayMode == PLAY_MODE_FRAME_ADVANCE) {
-      gWarpTransition.isActive = DAT_80416924;
+      gWarpTransition.isActive = uPrevWarpTransitionActive;
       set_play_mode(PLAY_MODE_NORMAL);
       raise_background_noise(1);
       play_sound(SOUND_MENU_PAUSE_2, gGlobalSoundSource);
-      return;
+    }
+  }
+  else {
+    reset_level_vars();
+    uPrevWarpTransitionActive = FALSE;
+    if (sCurrPlayMode == PLAY_MODE_FRAME_ADVANCE) {
+      set_play_mode(PLAY_MODE_NORMAL);
+      raise_background_noise(1);
+    }
+  }
+}
+
+static void usamune_print_save_slot_text(void) {
+  if (uSaveSlotTextTimer > 0) {
+    if (uSaveSlotTextVisible == 0) {
+      const char *txt;
+      u8 slot;
+      if (uSaveSlotText == SS_TEXT_LOAD) {
+	txt = "Load";
+	slot = uLoadStateSlot + 1;
+      }
+      else if (uSaveSlotText == SS_TEXT_SAVE) {
+	txt = "Save";
+	slot = uSaveStateSlot + 1;
+      }
+      usamune_print_text(uSaveSlotTextPosX, uSaveSlotTextPosY, txt);
+      usamune_print_text_fmt_int(uSaveSlotTextPosX + 56, uSaveSlotTextPosY, "%d", slot);
+      uSaveSlotTextVisible = 1;
+    }
+    if (--uSaveSlotTextTimer == 0) {
+      uSaveSlotText = SS_TEXT_NONE;
     }
   }
 }

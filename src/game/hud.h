@@ -21,6 +21,13 @@ enum CameraHUDLut {
     GLYPH_CAM_ARROW_DOWN
 };
 
+struct PowerMeterHUD {
+    s8 animation;
+    s16 x;
+    s16 y;
+    f32 unused;
+};
+
 void set_hud_camera_status(s16 status);
 void render_hud(void);
 

@@ -21,7 +21,7 @@
 #define MIN_SWIM_SPEED 16.0f
 
 static s16 sWasAtSurface = FALSE;
-static s16 sSwimStrength = MIN_SWIM_STRENGTH;
+s16 sSwimStrength = MIN_SWIM_STRENGTH;
 static s16 sWaterCurrentSpeeds[] = { 28, 12, 8, 4 };
 
 static s16 sBobTimer;

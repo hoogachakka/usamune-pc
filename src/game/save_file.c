@@ -160,7 +160,7 @@ static void restore_main_menu_data(s32 srcSlot) {
     write_eeprom_data(&gSaveBuffer.menuData[destSlot], sizeof(gSaveBuffer.menuData[destSlot]));
 }
 
-static void save_main_menu_data(void) {
+void save_main_menu_data(void) {
     if (gMainMenuDataModified) {
         // Compute checksum
         add_save_block_signature(&gSaveBuffer.menuData[0], sizeof(gSaveBuffer.menuData[0]), MENU_DATA_MAGIC);

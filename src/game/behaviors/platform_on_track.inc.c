@@ -1,3 +1,7 @@
+#include "game/usamune_settings.h"
+#include "sm64.h"
+
+extern void usamune_trigger_misc_timer(u8, u8);
 
 /**
  * Behavior for bhvPlatformOnTrack and bhvTrackBall.
@@ -108,17 +112,18 @@ static void platform_on_track_act_init(void) {
  * Wait for mario to stand on the platform for 20 frames, then begin moving.
  */
 static void platform_on_track_act_wait_for_mario(void) {
-    if (gMarioObject->platform == o) {
-        if (o->oTimer > 20) {
-            o->oAction = PLATFORM_ON_TRACK_ACT_MOVE_ALONG_TRACK;
-        }
-    } else {
-        if (o->activeFlags & ACTIVE_FLAG_IN_DIFFERENT_ROOM) {
-            platform_on_track_reset();
-        }
-
-        o->oTimer = 0;
+  if (gMarioObject->platform == o) {
+    if (o->oTimer > 20) {
+      o->oAction = PLATFORM_ON_TRACK_ACT_MOVE_ALONG_TRACK;
+      usamune_trigger_misc_timer(MISCT_RIDE, 38);
     }
+  } else {
+    if (o->activeFlags & ACTIVE_FLAG_IN_DIFFERENT_ROOM) {
+      platform_on_track_reset();
+    }
+
+    o->oTimer = 0;
+  }
 }
 
 /**

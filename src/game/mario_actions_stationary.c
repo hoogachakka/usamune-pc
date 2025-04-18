@@ -16,6 +16,7 @@
 #include "sound_init.h"
 #include "surface_terrains.h"
 #include "rumble_init.h"
+#include "usamune.h"
 
 s32 check_common_idle_cancels(struct MarioState *m) {
     mario_drop_held_object(m);
@@ -837,31 +838,35 @@ s32 landing_step(struct MarioState *m, s32 arg1, u32 action) {
 }
 
 s32 check_common_landing_cancels(struct MarioState *m, u32 action) {
-    if (m->input & INPUT_STOMPED) {
-        return set_mario_action(m, ACT_SHOCKWAVE_BOUNCE, 0);
-    }
+  if (m->input & INPUT_STOMPED) {
+    return set_mario_action(m, ACT_SHOCKWAVE_BOUNCE, 0);
+  }
 
-    if (m->input & INPUT_FIRST_PERSON) {
-        return set_mario_action(m, ACT_IDLE, 0);
-    }
+  if (m->input & INPUT_FIRST_PERSON) {
+    return set_mario_action(m, ACT_IDLE, 0);
+  }
 
-    if (m->input & INPUT_A_PRESSED) {
-        if (!action) {
-            return set_jump_from_landing(m);
-        } else {
-            return set_jumping_action(m, action, 0);
-        }
+  if (m->input & INPUT_A_PRESSED) {
+    if (!action) {
+      return set_jump_from_landing(m);
+    } else {
+      s32 ret = set_jumping_action(m, action, 0);
+      if (ret > 1 && action == ACT_BACKFLIP) {
+	uDustFrameCounter++;
+      }
+      return ret;
     }
+  }
 
-    if (m->input & (INPUT_NONZERO_ANALOG | INPUT_A_PRESSED | INPUT_OFF_FLOOR | INPUT_ABOVE_SLIDE)) {
-        return check_common_action_exits(m);
-    }
+  if (m->input & (INPUT_NONZERO_ANALOG | INPUT_A_PRESSED | INPUT_OFF_FLOOR | INPUT_ABOVE_SLIDE)) {
+    return check_common_action_exits(m);
+  }
 
-    if (m->input & INPUT_B_PRESSED) {
-        return set_mario_action(m, ACT_PUNCHING, 0);
-    }
+  if (m->input & INPUT_B_PRESSED) {
+    return set_mario_action(m, ACT_PUNCHING, 0);
+  }
 
-    return FALSE;
+  return FALSE;
 }
 
 s32 act_jump_land_stop(struct MarioState *m) {

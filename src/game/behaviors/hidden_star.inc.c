@@ -1,5 +1,10 @@
 // hidden_star.c.inc
 
+#include "game/usamune_settings.h"
+#include "sm64.h"
+
+extern void usamune_trigger_misc_timer(u8, u8);
+
 void bhv_hidden_star_init(void) {
     s16 sp36;
     struct Object *sp30;
@@ -34,26 +39,27 @@ void bhv_hidden_star_loop(void) {
 
 /* TODO: this is likely not a checkpoint but a Secret */
 void bhv_hidden_star_trigger_loop(void) {
-    struct Object *hiddenStar;
-    if (obj_check_if_collided_with_object(o, gMarioObject) == 1) {
-        hiddenStar = cur_obj_nearest_object_with_behavior(bhvHiddenStar);
-        if (hiddenStar != NULL) {
-            hiddenStar->oHiddenStarTriggerCounter++;
-            if (hiddenStar->oHiddenStarTriggerCounter != 5) {
-                spawn_orange_number(hiddenStar->oHiddenStarTriggerCounter, 0, 0, 0);
-            }
+  struct Object *hiddenStar;
+  if (obj_check_if_collided_with_object(o, gMarioObject) == 1) {
+    hiddenStar = cur_obj_nearest_object_with_behavior(bhvHiddenStar);
+    if (hiddenStar != NULL) {
+      hiddenStar->oHiddenStarTriggerCounter++;
+      if (hiddenStar->oHiddenStarTriggerCounter != 5) {
+	usamune_trigger_misc_timer(MISCT_NUMDISP, 3);
+	spawn_orange_number(hiddenStar->oHiddenStarTriggerCounter, 0, 0, 0);
+      }
 
 #ifdef VERSION_JP
-            play_sound(SOUND_MENU_STAR_SOUND, gGlobalSoundSource);
+      play_sound(SOUND_MENU_STAR_SOUND, gGlobalSoundSource);
 #else
-            play_sound(SOUND_MENU_COLLECT_SECRET
-                           + (((u8) hiddenStar->oHiddenStarTriggerCounter - 1) << 16),
-                       gGlobalSoundSource);
+      play_sound(SOUND_MENU_COLLECT_SECRET
+		 + (((u8) hiddenStar->oHiddenStarTriggerCounter - 1) << 16),
+		 gGlobalSoundSource);
 #endif
-        }
-
-        o->activeFlags = ACTIVE_FLAG_DEACTIVATED;
     }
+
+    o->activeFlags = ACTIVE_FLAG_DEACTIVATED;
+  }
 }
 
 void bhv_bowser_course_red_coin_star_loop(void) {

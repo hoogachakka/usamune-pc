@@ -1,4 +1,7 @@
 // spawn_default_star.c.inc
+#include "game/usamune.h"
+#include "game/usamune_settings.h"
+#include "game/usamune_timer.h"
 
 static struct ObjectHitbox sCollectStarHitbox = {
     /* interactType:      */ INTERACT_STAR_OR_KEY,
@@ -150,21 +153,25 @@ void spawn_no_exit_star(f32 sp20, f32 sp24, f32 sp28) {
 }
 
 void bhv_hidden_red_coin_star_init(void) {
-    s16 sp36;
-    struct Object *sp30;
+  s16 sp36;
+  struct Object *sp30;
 
-    if (gCurrCourseNum != COURSE_JRB)
-        spawn_object(o, MODEL_TRANSPARENT_STAR, bhvRedCoinStarMarker);
+  if (gCurrCourseNum != COURSE_JRB)
+    spawn_object(o, MODEL_TRANSPARENT_STAR, bhvRedCoinStarMarker);
 
-    sp36 = count_objects_with_behavior(bhvRedCoin);
-    if (sp36 == 0) {
-        sp30 =
-            spawn_object_abs_with_rot(o, 0, MODEL_STAR, bhvStar, o->oPosX, o->oPosY, o->oPosZ, 0, 0, 0);
-        sp30->oBehParams = o->oBehParams;
-        o->activeFlags = ACTIVE_FLAG_DEACTIVATED;
-    }
+  sp36 = count_objects_with_behavior(bhvRedCoin);
+  //USAMUNE: apply default red coin setting
+  if (uGlobalSettingsTable[DEFLT_DEFRED]) {
+    sp36 = 8 - uDefaultRedCoinCount;
+  }
+  if (sp36 == 0) {
+    sp30 =
+      spawn_object_abs_with_rot(o, 0, MODEL_STAR, bhvStar, o->oPosX, o->oPosY, o->oPosZ, 0, 0, 0);
+    sp30->oBehParams = o->oBehParams;
+    o->activeFlags = ACTIVE_FLAG_DEACTIVATED;
+  }
 
-    o->oHiddenStarTriggerCounter = 8 - sp36;
+  o->oHiddenStarTriggerCounter = 8 - sp36;
 }
 
 void bhv_hidden_red_coin_star_loop(void) {

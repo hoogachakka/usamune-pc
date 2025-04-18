@@ -1,16 +1,22 @@
 // mushroom_1up.c.inc
 
-void bhv_1up_interact(void) {
-    UNUSED s32 sp1C;
+#include "game/usamune_settings.h"
+#include "sm64.h"
 
-    if (obj_check_if_collided_with_object(o, gMarioObject) == 1) {
-        play_sound(SOUND_GENERAL_COLLECT_1UP, gGlobalSoundSource);
-        gMarioState->numLives++;
-        o->activeFlags = ACTIVE_FLAG_DEACTIVATED;
+extern void usamune_trigger_misc_timer(u8, u8);
+
+void bhv_1up_interact(void) {
+  UNUSED s32 sp1C;
+
+  if (obj_check_if_collided_with_object(o, gMarioObject) == 1) {
+    usamune_trigger_misc_timer(MISCT_1UP, 37);
+    play_sound(SOUND_GENERAL_COLLECT_1UP, gGlobalSoundSource);
+    gMarioState->numLives++;
+    o->activeFlags = ACTIVE_FLAG_DEACTIVATED;
 #if ENABLE_RUMBLE
-        queue_rumble_data(5, 80);
+    queue_rumble_data(5, 80);
 #endif
-    }
+  }
 }
 
 void bhv_1up_common_init(void) {

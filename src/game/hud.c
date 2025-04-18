@@ -13,6 +13,9 @@
 #include "area.h"
 #include "save_file.h"
 #include "print.h"
+#include "usamune.h"
+#include "usamune_settings.h"
+#include "usamune_timer.h"
 
 /* @file hud.c
  * This file implements HUD rendering and power meter animations.
@@ -20,12 +23,7 @@
  * cannon reticle, and the unused keys.
  **/
 
-struct PowerMeterHUD {
-    s8 animation;
-    s16 x;
-    s16 y;
-    f32 unused;
-};
+extern void usamune_render_hud_timer(void);
 
 struct UnusedHUDStruct {
     u32 unused1;
@@ -39,9 +37,9 @@ struct CameraHUD {
 
 // Stores health segmented value defined by numHealthWedges
 // When the HUD is rendered this value is 8, full health.
-static s16 sPowerMeterStoredHealth;
+s16 sPowerMeterStoredHealth;
 
-static struct PowerMeterHUD sPowerMeterHUD = {
+struct PowerMeterHUD sPowerMeterHUD = {
     POWER_METER_HIDDEN,
     140,
     166,
@@ -266,9 +264,24 @@ void render_hud_power_meter(void) {
  * Renders the amount of lives Mario has.
  */
 void render_hud_mario_lives(void) {
-    print_text(GFX_DIMENSIONS_RECT_FROM_LEFT_EDGE(22), HUD_TOP_Y, ","); // 'Mario Head' glyph
-    print_text(GFX_DIMENSIONS_RECT_FROM_LEFT_EDGE(38), HUD_TOP_Y, "*"); // 'X' glyph
-    print_text_fmt_int(GFX_DIMENSIONS_RECT_FROM_LEFT_EDGE(54), HUD_TOP_Y, "%d", gHudDisplay.lives);
+  print_text(GFX_DIMENSIONS_RECT_FROM_LEFT_EDGE(22), HUD_TOP_Y, ","); // 'Mario Head' glyph
+  print_text(GFX_DIMENSIONS_RECT_FROM_LEFT_EDGE(38), HUD_TOP_Y, "*"); // 'X' glyph
+  u32 num;
+  switch(uGlobalSettingsTable[HUD_LIFE]) {
+  case 0: // Mario lives
+    num = gHudDisplay.lives;
+    break;
+  case 1: // Fspeed
+    num = (u32)gMarioState->forwardVel;
+    break;
+  case 2: // Vspeed
+    num = (u32)gMarioState->vel[1];
+    break;
+  case 3: // IGMenu timer
+    num = uIngameMenuTimer;
+    break;
+  }
+  print_text_fmt_int(GFX_DIMENSIONS_RECT_FROM_LEFT_EDGE(54), HUD_TOP_Y, "%d", num);
 }
 
 /**
@@ -291,22 +304,38 @@ void render_hud_coins(void) {
  * Disables "X" glyph when Mario has 100 stars or more.
  */
 void render_hud_stars(void) {
-    s8 showX = 0;
+  s8 showX = 0;
+  u32 num;
 
-    if (gHudFlash == 1 && gGlobalTimer & 0x08) {
-        return;
-    }
+  if (gHudFlash == 1 && gGlobalTimer & 0x08) {
+    return;
+  }
 
-    if (gHudDisplay.stars < 100) {
-        showX = 1;
-    }
+  switch(uGlobalSettingsTable[HUD_STAR]) {
+  case 0: // num stars
+    num = gHudDisplay.stars;
+    break;
+  case 1: // Fspeed
+    num = (u32)gMarioState->forwardVel;
+    break;
+  case 2: // Vspeed
+    num = (u32)gMarioState->vel[1];
+    break;
+  case 3: // IGMenu timer
+    num = uIngameMenuTimer;
+    break;
+  }
 
-    print_text(GFX_DIMENSIONS_RECT_FROM_RIGHT_EDGE(HUD_STARS_X), HUD_TOP_Y, "-"); // 'Star' glyph
-    if (showX == 1) {
-        print_text(GFX_DIMENSIONS_RECT_FROM_RIGHT_EDGE(HUD_STARS_X) + 16, HUD_TOP_Y, "*"); // 'X' glyph
-    }
-    print_text_fmt_int((showX * 14) + GFX_DIMENSIONS_RECT_FROM_RIGHT_EDGE(HUD_STARS_X - 16),
-                       HUD_TOP_Y, "%d", gHudDisplay.stars);
+  if (num < 100) {
+    showX = 1;
+  }
+
+  print_text(GFX_DIMENSIONS_RECT_FROM_RIGHT_EDGE(HUD_STARS_X), HUD_TOP_Y, "-"); // 'Star' glyph
+  if (showX == 1) {
+    print_text(GFX_DIMENSIONS_RECT_FROM_RIGHT_EDGE(HUD_STARS_X) + 16, HUD_TOP_Y, "*"); // 'X' glyph
+  }
+  print_text_fmt_int((showX * 14) + GFX_DIMENSIONS_RECT_FROM_RIGHT_EDGE(HUD_STARS_X - 16),
+		     HUD_TOP_Y, "%d", num);
 }
 
 /**
@@ -472,8 +501,6 @@ void render_hud(void) {
             render_hud_camera_status();
         }
 
-        if (hudDisplayFlags & HUD_DISPLAY_FLAG_TIMER) {
-            render_hud_timer();
-        }
+        usamune_render_hud_timer();
     }
 }

@@ -60,8 +60,8 @@ struct MainMenuSaveData
 #define SUBTRAHEND 6
 #endif
 
-    // Pad to match the EEPROM size of 0x200 (10 bytes on JP/US, 8 bytes on EU)
-    u8 filler[EEPROM_SIZE / 2 - SUBTRAHEND - NUM_SAVE_FILES * (4 + sizeof(struct SaveFile))];
+    // Padding is used to save usamune settings
+    u8 usamuneSaveData[EEPROM_SIZE / 2 - SUBTRAHEND - NUM_SAVE_FILES * (4 + sizeof(struct SaveFile))];
 
     struct SaveBlockSignature signature;
 };

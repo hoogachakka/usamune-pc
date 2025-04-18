@@ -1,4 +1,8 @@
 // unagi.inc.c
+#include "game/usamune_settings.h"
+#include "sm64.h"
+
+extern void usamune_trigger_misc_timer(u8, u8);
 
 struct ObjectHitbox sUnagiHitbox = {
     /* interactType:      */ INTERACT_CLAM_OR_BUBBA,
@@ -93,50 +97,51 @@ void unagi_act_2(void) {
 }
 
 void unagi_act_3(void) {
-    if (o->oUnagiUnkF4 < 0.0f) {
-        cur_obj_init_animation_with_sound(6);
+  if (o->oUnagiUnkF4 < 0.0f) {
+    cur_obj_init_animation_with_sound(6);
 
-        if ((o->oUnagiUnkF4 += 10.0f) > 0.0f) {
-            o->oUnagiUnkF4 = 0.0f;
-        }
-    } else {
-        if (o->oUnagiUnkF4 == 0.0f) {
-            cur_obj_init_animation_with_sound(6);
+    if ((o->oUnagiUnkF4 += 10.0f) > 0.0f) {
+      o->oUnagiUnkF4 = 0.0f;
+    }
+  } else {
+    if (o->oUnagiUnkF4 == 0.0f) {
+      cur_obj_init_animation_with_sound(6);
 
-            if (o->oTimer > 60 && o->oUnagiUnk1AC < 1000.0f) {
-                cur_obj_play_sound_2(SOUND_OBJ_EEL_2);
-                o->oUnagiUnkF8 = o->oUnagiUnk110 = 30.0f;
-            } else {
-                o->oUnagiUnk110 = 0.0f;
-            }
-        } else if (o->oUnagiUnk110 > 0.0f) {
-            if (cur_obj_init_anim_and_check_if_end(5)) {
-                o->oUnagiUnk110 = 0.0f;
-            }
-        } else if (o->oUnagiUnk110 == 0.0f) {
-            cur_obj_init_animation_with_sound(0);
-            if (cur_obj_check_if_at_animation_end()) {
-                if (o->oUnagiUnk1AC < 1000.0f) {
-                    o->oAction = 4;
-                    o->oForwardVel = o->oUnagiUnkF8;
-                    cur_obj_init_animation_with_sound(1);
-                } else {
-                    o->oUnagiUnk110 = -50.0f;
-                    cur_obj_init_animation_with_sound(4);
-                }
-            }
-        }
-
-        approach_f32_ptr(&o->oUnagiUnkF8, o->oUnagiUnk110, 4.0f);
-
-        if ((o->oUnagiUnkF4 += o->oUnagiUnkF8) < 0.0f) {
-            o->oUnagiUnkF4 = o->oUnagiUnkF8 = 0.0f;
-            o->oTimer = 0;
-        }
+      if (o->oTimer > 60 && o->oUnagiUnk1AC < 1000.0f) {
+	usamune_trigger_misc_timer(MISCT_ENEMY, 15);
+	cur_obj_play_sound_2(SOUND_OBJ_EEL_2);
+	o->oUnagiUnkF8 = o->oUnagiUnk110 = 30.0f;
+      } else {
+	o->oUnagiUnk110 = 0.0f;
+      }
+    } else if (o->oUnagiUnk110 > 0.0f) {
+      if (cur_obj_init_anim_and_check_if_end(5)) {
+	o->oUnagiUnk110 = 0.0f;
+      }
+    } else if (o->oUnagiUnk110 == 0.0f) {
+      cur_obj_init_animation_with_sound(0);
+      if (cur_obj_check_if_at_animation_end()) {
+	if (o->oUnagiUnk1AC < 1000.0f) {
+	  o->oAction = 4;
+	  o->oForwardVel = o->oUnagiUnkF8;
+	  cur_obj_init_animation_with_sound(1);
+	} else {
+	  o->oUnagiUnk110 = -50.0f;
+	  cur_obj_init_animation_with_sound(4);
+	}
+      }
     }
 
-    o->oPosX = o->oHomeX + o->oUnagiUnkF4 * sins(o->oMoveAngleYaw);
-    o->oPosZ = o->oHomeZ + o->oUnagiUnkF4 * coss(o->oMoveAngleYaw);
+    approach_f32_ptr(&o->oUnagiUnkF8, o->oUnagiUnk110, 4.0f);
+
+    if ((o->oUnagiUnkF4 += o->oUnagiUnkF8) < 0.0f) {
+      o->oUnagiUnkF4 = o->oUnagiUnkF8 = 0.0f;
+      o->oTimer = 0;
+    }
+  }
+
+  o->oPosX = o->oHomeX + o->oUnagiUnkF4 * sins(o->oMoveAngleYaw);
+  o->oPosZ = o->oHomeZ + o->oUnagiUnkF4 * coss(o->oMoveAngleYaw);
 }
 
 void bhv_unagi_loop(void) {

@@ -15,6 +15,13 @@
 #include "game/object_list_processor.h"
 #include "surface_load.h"
 
+/**
+ * USAMUNE
+ * Environmental region array.
+ */
+extern s16* uEnvironmentalRegions[8];
+ 
+
 s32 unused8038BE90;
 
 /**
@@ -656,6 +663,7 @@ void load_area_terrain(s16 index, s16 *data, s8 *surfaceRooms, s16 *macroObjects
         } else if (terrainLoadType == TERRAIN_LOAD_OBJECTS) {
             spawn_special_objects(index, &data);
         } else if (terrainLoadType == TERRAIN_LOAD_ENVIRONMENT) {
+      	    uEnvironmentalRegions[gCurrAreaIndex] = data;
             load_environmental_regions(&data);
         } else if (terrainLoadType == TERRAIN_LOAD_CONTINUE) {
             continue;

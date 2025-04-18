@@ -1,5 +1,8 @@
 // water_pillar.c.inc
 
+extern u32 usamune_moat_get_save_flags();
+extern u32 uMoatDrainFlags;
+
 void water_level_pillar_undrained(void) {
     struct Object *otherWaterPillar;
     switch (o->oAction) {
@@ -28,6 +31,8 @@ void water_level_pillar_undrained(void) {
                 if (otherWaterPillar->oAction > 1) {
                     o->oAction++;
 
+		    //USAMUNE:
+		    uMoatDrainFlags = SAVE_FLAG_MOAT_DRAINED;
                     save_file_set_flags(SAVE_FLAG_MOAT_DRAINED);
                     play_puzzle_jingle();
                 }
@@ -60,7 +65,7 @@ void water_level_pillar_drained(void) {
 }
 
 void bhv_water_level_pillar_init(void) {
-    if (save_file_get_flags() & SAVE_FLAG_MOAT_DRAINED)
+    if (usamune_moat_get_save_flags() & SAVE_FLAG_MOAT_DRAINED)
         o->oWaterLevelPillarDrained = 1;
 }
 

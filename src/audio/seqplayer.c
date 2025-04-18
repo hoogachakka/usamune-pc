@@ -15,6 +15,8 @@
 #define PORTAMENTO_MODE_4 4
 #define PORTAMENTO_MODE_5 5
 
+extern u8 uMuteMusic;
+
 #ifdef VERSION_SH
 void seq_channel_layer_process_script_part1(struct SequenceChannelLayer *layer);
 s32 seq_channel_layer_process_script_part2(struct SequenceChannelLayer *layer);
@@ -1715,7 +1717,8 @@ void sequence_channel_process_script(struct SequenceChannel *seqChannel) {
                         break;
 
                     case 0xdf: // chan_setvol
-                        sequence_channel_set_volume(seqChannel, m64_read_u8(state));
+		        u8 vol = m64_read_u8(state);
+			sequence_channel_set_volume(seqChannel, !uMuteMusic ? vol : 0);
 #if defined(VERSION_EU) || defined(VERSION_SH)
                         seqChannel->changes.as_bitfields.volume = TRUE;
 #endif

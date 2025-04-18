@@ -10,6 +10,7 @@
 #include "macro_presets.h"
 
 #include "special_presets.h"
+#include <stdio.h>
 
 /*
  * Converts the rotation value supplied by macro objects into one
@@ -137,6 +138,13 @@ void spawn_macro_objects(s16 areaIndex, s16 *macroObjList) {
         preset.model = MacroObjectPresets[presetID].model;
         preset.behavior = MacroObjectPresets[presetID].behavior;
         preset.param = MacroObjectPresets[presetID].param;
+	if (presetID >= 6 && presetID <= 13) {
+	  printf("%d, %d, %d, %d, %d\n",  macroObject[MACRO_OBJ_Y_ROT],
+		 macroObject[MACRO_OBJ_X],
+		 macroObject[MACRO_OBJ_Y],
+		 macroObject[MACRO_OBJ_Z],
+		 macroObject[MACRO_OBJ_PARAMS]);
+	}
 
         if (preset.param != 0) {
             macroObject[MACRO_OBJ_PARAMS] =
@@ -169,6 +177,7 @@ void spawn_macro_objects(s16 areaIndex, s16 *macroObjList) {
             newObj->parentObj = newObj;
         }
     }
+    printf("\n");
 }
 
 void spawn_macro_objects_hardcoded(s16 areaIndex, s16 *macroObjList) {

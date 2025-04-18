@@ -1,5 +1,10 @@
 // exclamation_box.c.inc
 
+#include "game/usamune_settings.h"
+#include "sm64.h"
+
+extern void usamune_trigger_misc_timer(u8, u8);
+
 struct ObjectHitbox sExclamationBoxHitbox = {
     /* interactType: */ INTERACT_BREAKABLE,
     /* downOffset: */ 5,
@@ -122,15 +127,16 @@ void exclamation_box_spawn_contents(struct Struct802C0DF0 *a0, u8 a1) {
 }
 
 void exclamation_box_act_4(void) {
-    exclamation_box_spawn_contents(sExclamationBoxContents, o->oBehParams2ndByte);
-    spawn_mist_particles_variable(0, 0, 46.0f);
-    spawn_triangle_break_particles(20, MODEL_CARTOON_STAR, 0.3f, o->oAnimState);
-    create_sound_spawner(SOUND_GENERAL_BREAK_BOX);
-    if (o->oBehParams2ndByte < 3) {
-        o->oAction = 5;
-        cur_obj_hide();
-    } else
-        obj_mark_for_deletion(o);
+  usamune_trigger_misc_timer(MISCT_EXCLBOX, 2);
+  exclamation_box_spawn_contents(sExclamationBoxContents, o->oBehParams2ndByte);
+  spawn_mist_particles_variable(0, 0, 46.0f);
+  spawn_triangle_break_particles(20, MODEL_CARTOON_STAR, 0.3f, o->oAnimState);
+  create_sound_spawner(SOUND_GENERAL_BREAK_BOX);
+  if (o->oBehParams2ndByte < 3) {
+    o->oAction = 5;
+    cur_obj_hide();
+  } else
+    obj_mark_for_deletion(o);
 }
 
 void exclamation_box_act_5(void) {

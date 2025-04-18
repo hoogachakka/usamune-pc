@@ -20,6 +20,7 @@
 #include "segment_symbols.h"
 #include "rumble_init.h"
 #include <prevent_bss_reordering.h>
+#include "usamune.h"
 
 // First 3 controller slots
 struct Controller gControllers[3];
@@ -674,10 +675,6 @@ static struct LevelCommand *levelCommandAddr;
  * Main game loop thread. Runs forever as long as the game continues.
  */
 void thread5_game_loop(UNUSED void *arg) {
-#ifdef TARGET_N64
-    struct LevelCommand *levelCommandAddr;
-#endif
-
     setup_game_memory();
 #if ENABLE_RUMBLE
     init_rumble_pak_scheduler_queue();
@@ -686,7 +683,7 @@ void thread5_game_loop(UNUSED void *arg) {
 #if ENABLE_RUMBLE
     create_thread_6();
 #endif
-    save_file_load_all();
+    usamune_save_file_load_all();
 
     set_vblank_handler(2, &gGameVblankHandler, &gGameVblankQueue, (OSMesg) 1);
 
@@ -696,24 +693,14 @@ void thread5_game_loop(UNUSED void *arg) {
     play_music(SEQ_PLAYER_SFX, SEQUENCE_ARGS(0, SEQ_SOUND_PLAYER), 0);
     set_sound_mode(save_file_get_sound_mode());
 
-#ifdef TARGET_N64
-    render_init();
-
-    while (TRUE) {
-#else
     gGlobalTimer++;
 }
 
 void game_loop_one_iteration(void) {
-#endif
         // If the reset timer is active, run the process to reset the game.
         if (gResetTimer) {
             draw_reset_bars();
-#ifdef TARGET_N64
-            continue;
-#else
             return;
-#endif
         }
         profiler_log_thread5_time(THREAD5_START);
 
@@ -741,7 +728,5 @@ void game_loop_one_iteration(void) {
             print_text_fmt_int(180, 20, "BUF %d", gGfxPoolEnd - (u8 *) gDisplayListHead);
 #endif
         }
-#ifdef TARGET_N64
-    }
-#endif
+	usamune_main();
 }
