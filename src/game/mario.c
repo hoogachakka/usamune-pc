@@ -1908,9 +1908,9 @@ void init_mario_from_save_file(void) {
     gHudDisplay.wedges = 8;
 
     //USAMUNE ADDITIONS
-    /* sWarpDest.levelNum = 0; */
-    /* sWarpDest.areaIdx = 0; */
-    /* sWarpDest.nodeId = 0; */
+    sWarpDest.levelNum = 0;
+    sWarpDest.areaIdx = 0;
+    sWarpDest.nodeId = 0;
 
     /* usamune_clear_setting(MISC_STJ, gCurrSaveFileNum); */
     

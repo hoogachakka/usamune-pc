@@ -2,6 +2,7 @@
 #define USAMUNE_H
 
 #include "sm64.h"
+#include "usamune_types.h"
 
 void usamune_main(void);
 s16 usamune_render_menus_and_dialogs(void);
@@ -26,49 +27,6 @@ enum SaveSlotText
     SS_TEXT_SAVE
   };
 
-typedef void (*actionFunc)(u8, u16, u8*);
-
-typedef struct uMenuAction
-{
-  u16 trigger;
-  actionFunc action;
-} uMenuAction;
-
-typedef struct uMenuSetting
-{
-  const char* name;
-  u8* currOption;
-  u8 numOptions;
-  u8 flags;
-  void (*menu_bhv_func)(struct uMenuSetting*);
-  u32 (*render_func)(struct uMenuSetting*);
-  void (*apply_func)(struct uMenuSetting*, u8, s16);
-  struct uMenuSetting* subSetting;
-  const char** options;
-} uMenuSetting;
-
-typedef struct uMenuSettingCategory
-{
-  const char* name;
-  u8 currSetting;
-  u8 numSettings;
-  uMenuSetting* settingsTable;
-} uMenuSettingCategory;
-
-typedef struct uWarpDest
-{
-  u8 levelNum;
-  u8 areaIdx;
-  u8 nodeId;
-  u8 prevLevel;
-  u8 flags;
-} uWarpDest;
-
-typedef struct uLevelOption
-{
-  const char* name;
-  u8 warpID;
-} uLevelOption;
 
 extern u8 uGlobalSettingsTable[];
 extern u8 uPrevWarpMode;

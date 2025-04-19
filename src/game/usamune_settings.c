@@ -32,6 +32,7 @@ static void usamune_setting_two_options_menu(uMenuSetting* setting);
 static void usamune_menu_editable_field_bhv(u8 numPositions, u8 *pos, u32 *field, u32 maxVal, u8 wrap);
 static void usamune_menu_editable_time_bhv(u16 *time, u8 *pos);
 static u32 usamune_setting_two_options_render(uMenuSetting* setting);
+static u32 usamune_render_data_savedata_setting(uMenuSetting* setting, u8 id);
 //static void usamune_setting_data_menu_bhv(uMenuSetting* setting);
 extern void usamune_menu_change_setting(uMenuSetting* setting, u8 param_2);
 
@@ -175,7 +176,38 @@ uMenuSettingCategory uMenuSettingCategories[] = {
   { "Misc",  0, 8,  uMiscSettingsTable  }
 };
 
+void usamune_apply_setting(uMenuSetting* setting, u8 nextOption) {
+  u8 prevOption = *(setting->currOption);
+  *(setting->currOption) = nextOption;
 
+  if (setting->apply_func != NULL) {
+    (*setting->apply_func)(setting, prevOption, gCurrSaveFileNum);
+  }
+}
+
+uMenuSetting* usamune_get_setting_from_id(u8 id) {
+  switch (id) {
+  case 0x1F:
+    return &usamune_TIMER_RTATMR_subsetting;
+  case 0x1A:
+    return &usamune_RESET_SSTATES_subsetting;
+  case 0x52:
+    return &usamune_HUD_INPUT_subsetting;
+  default:
+    break;
+  }
+  int i, j;
+  for (i = 0; i < 8; i++) {
+    uMenuSettingCategory *cat = &uMenuSettingCategories[i];
+    for (j = 0; j < cat->numSettings; j++) {
+      if ((cat->settingsTable[j].currOption - &uGlobalSettingsTable[0]) == id) {
+	return &cat->settingsTable[j];
+      }
+    }
+  }
+  
+  return NULL;
+}
 
 /* APPLY FUNCTIONS */
 
@@ -529,7 +561,22 @@ u32 usamune_moat_get_save_flags(void) {
 
 
 
-
+static u32 usamune_render_data_savedata_setting(uMenuSetting* setting, u8 id) {
+  switch (id) {
+  case DATA_120FILE:
+    break;
+  case DATA_FOR0STAR:
+    break;
+  case DATA_FOR16STAR:
+    break;
+  case DATA_FOR70STAR:
+    break;
+  case DATA_FOR120STAR:
+    break;
+  default:
+    return FALSE;
+  }
+}
 
 
 

@@ -2,6 +2,7 @@
 #define USAMUNE_SETTINGS_H
 
 #include "sm64.h"
+#include "usamune_types.h"
 
 #define DEF_SETTING(name, id) name = id,
 
@@ -50,6 +51,8 @@ extern u8 uDefTimeCursorPos;
 
 u32 usamune_stgtxt_get_save_flags(void);
 u32 usamune_stgtxt_get_star_flags(s32 fileIndex, s32 courseIndex);
+void usamune_apply_setting(uMenuSetting *setting, u8 nextOption);
+uMenuSetting* usamune_get_setting_from_id(u8 id);
 
 
 #endif

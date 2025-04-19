@@ -19,78 +19,81 @@ void usamune_save_file_load_all(void) {
   usamune_load_save_file_4();
 }
 
+static void usamune_load_setting_from_save_file(u8 byte, u8 setting, u8 shift, u8 bits) {
+  uMenuSetting* settingPtr = usamune_get_setting_from_id(setting);
+  usamune_apply_setting(settingPtr, (gSaveBuffer.menuData[0].usamuneSaveData[byte] >> shift) & ((1 << bits) - 1));
+}
+
 static void usamune_menu_load_settings(void) {
-  LOAD_SETTING(0, MISCT_MISCTMR, 7, 1); //apply
-  LOAD_SETTING(0, MISCT_NUMDISP, 6, 1);
-  LOAD_SETTING(0, MISCT_XCAM, 5, 1);
-  LOAD_SETTING(0, MISCT_BSWITCH, 4, 1);
-  LOAD_SETTING(0, MISCT_PSWITCH, 3, 1);
-  LOAD_SETTING(0, MISCT_RIDE, 2, 1);
-  LOAD_SETTING(0, MISCT_CHEST, 1, 1);
-  LOAD_SETTING(0, MISCT_CRYSTAL, 0, 1);
+  usamune_load_setting_from_save_file(0, MISCT_MISCTMR, 7, 1); //apply
+  usamune_load_setting_from_save_file(0, MISCT_NUMDISP, 6, 1);
+  usamune_load_setting_from_save_file(0, MISCT_XCAM, 5, 1);
+  usamune_load_setting_from_save_file(0, MISCT_BSWITCH, 4, 1);
+  usamune_load_setting_from_save_file(0, MISCT_PSWITCH, 3, 1);
+  usamune_load_setting_from_save_file(0, MISCT_RIDE, 2, 1);
+  usamune_load_setting_from_save_file(0, MISCT_CHEST, 1, 1);
+  usamune_load_setting_from_save_file(0, MISCT_CRYSTAL, 0, 1);
       
-  LOAD_SETTING(1, MISCT_ENEMY, 7, 1);
-  LOAD_SETTING(1, MISCT_EXCLBOX, 6, 1);
-  LOAD_SETTING(1, MISCT_CORKBOX, 5, 1);
-  LOAD_SETTING(1, MISCT_OBJGRB, 4, 1);
-  LOAD_SETTING(1, MISCT_LDGEGRB, 3, 1);
-  LOAD_SETTING(1, MISCT_POLEGRB, 2, 1);
-  LOAD_SETTING(1, MISCT_WK, 1, 1);
-  LOAD_SETTING(1, MISCT_WALLHIT, 0, 1);
+  usamune_load_setting_from_save_file(1, MISCT_ENEMY, 7, 1);
+  usamune_load_setting_from_save_file(1, MISCT_EXCLBOX, 6, 1);
+  usamune_load_setting_from_save_file(1, MISCT_CORKBOX, 5, 1);
+  usamune_load_setting_from_save_file(1, MISCT_OBJGRB, 4, 1);
+  usamune_load_setting_from_save_file(1, MISCT_LDGEGRB, 3, 1);
+  usamune_load_setting_from_save_file(1, MISCT_POLEGRB, 2, 1);
+  usamune_load_setting_from_save_file(1, MISCT_WK, 1, 1);
+  usamune_load_setting_from_save_file(1, MISCT_WALLHIT, 0, 1);
 
-  LOAD_SETTING(2, MISCT_CLIP, 7, 1);
-  LOAD_SETTING(2, MISCT_SURFACE, 6, 1);
-  LOAD_SETTING(2, MISCT_FLIP, 5, 1);
-  LOAD_SETTING(2, MISCT_ROLLOUT, 4, 1);
-  LOAD_SETTING(2, MISCT_DIVE, 3, 1);
-  LOAD_SETTING(2, MISCT_LJSLDK, 2, 1);
-  LOAD_SETTING(2, MISCT_TJ, 1, 1);
-  LOAD_SETTING(2, MISCT_LOAD, 0, 1);
+  usamune_load_setting_from_save_file(2, MISCT_CLIP, 7, 1);
+  usamune_load_setting_from_save_file(2, MISCT_SURFACE, 6, 1);
+  usamune_load_setting_from_save_file(2, MISCT_FLIP, 5, 1);
+  usamune_load_setting_from_save_file(2, MISCT_ROLLOUT, 4, 1);
+  usamune_load_setting_from_save_file(2, MISCT_DIVE, 3, 1);
+  usamune_load_setting_from_save_file(2, MISCT_LJSLDK, 2, 1);
+  usamune_load_setting_from_save_file(2, MISCT_TJ, 1, 1);
+  usamune_load_setting_from_save_file(2, MISCT_LOAD, 0, 1);
 
-  LOAD_SETTING(3, MISCT_BOWSER, 7, 1);
-  LOAD_SETTING(3, MISCT_COIN, 6, 1);
-  LOAD_SETTING(3, MISCT_1UP, 5, 1);
-  LOAD_SETTING(3, TIMER_STOP, 3, 2);
-  LOAD_SETTING(3, TIMER_DISPLAY, 1, 2); //apply
-  LOAD_SETTING(3, TIMER_FADETMR, 0, 1);
+  usamune_load_setting_from_save_file(3, MISCT_BOWSER, 7, 1);
+  usamune_load_setting_from_save_file(3, MISCT_COIN, 6, 1);
+  usamune_load_setting_from_save_file(3, MISCT_1UP, 5, 1);
+  usamune_load_setting_from_save_file(3, TIMER_STOP, 3, 2);
+  usamune_load_setting_from_save_file(3, TIMER_DISPLAY, 1, 2); //apply
+  usamune_load_setting_from_save_file(3, TIMER_FADETMR, 0, 1);
 
-  LOAD_SETTING(4, TIMER_SECTMR, 7, 1); //apply
-  LOAD_SETTING(4, TIMER_PSSRACE, 5, 2); //apply
-  LOAD_SETTING(4, TIMER_REALTMR, 3, 2);
-  LOAD_SETTING(4, TIMER_RTATMR, 1, 2); //apply
-  LOAD_SETTING(4, 0x1F, 0, 1);
+  usamune_load_setting_from_save_file(4, TIMER_SECTMR, 7, 1); //apply
+  usamune_load_setting_from_save_file(4, TIMER_PSSRACE, 5, 2); //apply
+  usamune_load_setting_from_save_file(4, TIMER_REALTMR, 3, 2);
+  usamune_load_setting_from_save_file(4, TIMER_RTATMR, 1, 2); //apply
+  usamune_load_setting_from_save_file(4, 0x1F, 0, 1);
 
-  LOAD_SETTING(5, TIMER_TMRPOSI, 7, 1); //apply
-  LOAD_SETTING(5, RESET_LBUTTON, 5, 2);
-  LOAD_SETTING(5, RESET_LxR, 3, 2);
-  LOAD_SETTING(5, RESET_INITBGM, 2, 1);
-  LOAD_SETTING(5, RESET_SSTATES, 1, 1);
-  LOAD_SETTING(5, 0x1A, 0, 1);
+  usamune_load_setting_from_save_file(5, TIMER_TMRPOSI, 7, 1); //apply
+  usamune_load_setting_from_save_file(5, RESET_LBUTTON, 5, 2);
+  usamune_load_setting_from_save_file(5, RESET_LxR, 3, 2);
+  usamune_load_setting_from_save_file(5, RESET_INITBGM, 2, 1);
+  usamune_load_setting_from_save_file(5, RESET_SSTATES, 1, 1);
+  usamune_load_setting_from_save_file(5, 0x1A, 0, 1);
   
-  LOAD_SETTING(6, HUD_LIFE, 5, 3);
-  LOAD_SETTING(6, HUD_STAR, 2, 3);
-  LOAD_SETTING(6, 0x4B, 1, 1);
-  LOAD_SETTING(6, MISC_MODE, 0, 1);
+  usamune_load_setting_from_save_file(6, HUD_LIFE, 5, 3);
+  usamune_load_setting_from_save_file(6, HUD_STAR, 2, 3);
+  //usamune_load_setting_from_save_file(6, 0x4B, 1, 1);
+  usamune_load_setting_from_save_file(6, MISC_MODE, 0, 1);
 
-  LOAD_SETTING(7, HUD_ATTEMPT, 6, 2); //apply
-  LOAD_SETTING(7, 0x46, 5, 1);
-  LOAD_SETTING(7, HUD_DUST, 4, 1);
-  LOAD_SETTING(7, HUD_INPUT, 2, 2);
-  LOAD_SETTING(7, 0x52, 1, 1);
-  LOAD_SETTING(7, HUD_WKDISP, 0, 1); //apply
+  usamune_load_setting_from_save_file(7, HUD_ATTEMPT, 6, 2); //apply
+  //usamune_load_setting_from_save_file(7, 0x46, 5, 1);
+  usamune_load_setting_from_save_file(7, HUD_DUST, 4, 1);
+  usamune_load_setting_from_save_file(7, HUD_INPUT, 2, 2);
+  usamune_load_setting_from_save_file(7, 0x52, 1, 1);
+  usamune_load_setting_from_save_file(7, HUD_WKDISP, 0, 1); //apply
 
-  LOAD_SETTING(8, STAGE_TTC, 5, 3);
-  LOAD_SETTING(8, STAGE_WDW, 3, 2);
-  LOAD_SETTING(8, STAGE_DDDSUB, 1, 2); //apply
-  LOAD_SETTING(8, STAGE_CCMPENG, 0, 1);
+  usamune_load_setting_from_save_file(8, STAGE_TTC, 5, 3);
+  usamune_load_setting_from_save_file(8, STAGE_WDW, 3, 2);
+  usamune_load_setting_from_save_file(8, STAGE_DDDSUB, 1, 2); //apply
+  usamune_load_setting_from_save_file(8, STAGE_CCMPENG, 0, 1);
 
-  LOAD_SETTING(9, STAGE_MIPS, 6, 2);
-  LOAD_SETTING(9, STAGE_TOAD, 5, 1);
-  LOAD_SETTING(9, STAGE_SWITCH, 4, 1);
-  LOAD_SETTING(9, MISC_MUSIC, 3, 1); //apply
-  LOAD_SETTING(9, MISC_STARCOLOR, 2, 1); //apply
-
-  //TODO: call all apply functions
+  usamune_load_setting_from_save_file(9, STAGE_MIPS, 6, 2);
+  usamune_load_setting_from_save_file(9, STAGE_TOAD, 5, 1);
+  usamune_load_setting_from_save_file(9, STAGE_SWITCH, 4, 1);
+  usamune_load_setting_from_save_file(9, MISC_MUSIC, 3, 1); //apply
+  usamune_load_setting_from_save_file(9, MISC_STARCOLOR, 2, 1); //apply
 }
 
 void usamune_menu_save_settings(void) {

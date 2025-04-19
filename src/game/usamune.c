@@ -70,6 +70,7 @@ u8 uCustomLevelEditArrowIndex = 0;
 u16 uLandingDustFrames = 0;
 u8 uStageTextReadArray[25];
 u32 uMoatDrainFlags = 0;
+u8 uDoSaveSettings = FALSE;
 
 u8 DAT_80417c6a = 0;
 u8 DAT_80417c6b = 0;
@@ -1196,15 +1197,18 @@ void usamune_menu_change_setting(uMenuSetting* setting, u8 param_2) {
   }
   *setting->currOption = nextOption;
 
-  if (setting->apply_func != NULL) {
-    (*setting->apply_func)(setting, prevOption, gCurrSaveFileNum);
-  }
-
   if (prevOption == nextOption) {
     uMenuNextSound |= (1 << 4);
   }
   else {
+    if (setting->flags & 1) {
+      uDoSaveSettings = TRUE;
+    }
     uMenuNextSound |= (1 << 3);
+  }
+
+  if (setting->apply_func != NULL) {
+    (*setting->apply_func)(setting, prevOption, gCurrSaveFileNum);
   }
 }
     
@@ -1219,12 +1223,13 @@ static void reset_action_timers(void) {
 
 static void usamune_menu_switch_page(void) {
   uInEditMode = FALSE;
-  /* if (uGlobalSettingsTable[MISC_PRESET] == 0) { */
-    
+  if (uGlobalSettingsTable[MISC_PRESET] == 0) {
+    if (uDoSaveSettings) {
+      usamune_menu_save_settings();
+      uDoSaveSettings = FALSE;
+    }
+  }
 
-  /* } */
-
-  
   uMenuNextSound |= 4;
   reset_action_timers();
   
@@ -1471,6 +1476,13 @@ void usamune_render_timer(s32 x, s32 y, u16 time) {
 static void usamune_exit_menu_or_reset(u8 reset) {
   uMenuActive = FALSE;
   uInEditMode = FALSE;
+
+  if (!uGlobalSettingsTable[MISC_PRESET]) {
+    if (uDoSaveSettings) {
+      usamune_menu_save_settings();
+      uDoSaveSettings = FALSE;
+    }
+  }
 
   reset_action_timers();
   if (reset == 0) {
